@@ -96,6 +96,66 @@ function heuristicRuleset(prompt: string): RuleSet {
   };
 }
 
+function extractTextValue(value: unknown, depth = 0): string | null {
+  if (depth > 2 || value == null) {
+    return null;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const extracted = extractTextValue(item, depth + 1);
+      if (extracted) {
+        return extracted;
+      }
+    }
+    return null;
+  }
+
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const preferredKeys = [
+      "titleStyle",
+      "listSentenceSchema",
+      "style",
+      "schema",
+      "value",
+      "text",
+      "label",
+      "name",
+      "description"
+    ];
+
+    for (const key of preferredKeys) {
+      if (!(key in record)) {
+        continue;
+      }
+
+      const extracted = extractTextValue(record[key], depth + 1);
+      if (extracted) {
+        return extracted;
+      }
+    }
+
+    for (const nested of Object.values(record)) {
+      const extracted = extractTextValue(nested, depth + 1);
+      if (extracted) {
+        return extracted;
+      }
+    }
+  }
+
+  return null;
+}
+
 function extractSource(request: GenerateDeckRequest): string {
   return [request.contentText, request.attachment?.text].filter(Boolean).join("\n\n").trim();
 }
@@ -245,16 +305,20 @@ async function deriveRuleset(prompt: string, context: InferredContext): Promise<
     return heuristic;
   }
 
+  const normalizedConstraints = Array.isArray(ai.constraints)
+    ? ai.constraints
+        .map((item) => extractTextValue(item))
+        .filter((item): item is string => Boolean(item))
+    : heuristic.constraints;
+
   return {
-    listSentenceSchema: String(ai.listSentenceSchema ?? heuristic.listSentenceSchema),
-    titleStyle: String(ai.titleStyle ?? heuristic.titleStyle),
+    listSentenceSchema: extractTextValue(ai.listSentenceSchema) ?? heuristic.listSentenceSchema,
+    titleStyle: extractTextValue(ai.titleStyle) ?? heuristic.titleStyle,
     maxBulletsPerSlide:
       typeof ai.maxBulletsPerSlide === "number" && Number.isFinite(ai.maxBulletsPerSlide)
         ? Math.max(3, Math.min(7, Math.round(ai.maxBulletsPerSlide)))
         : heuristic.maxBulletsPerSlide,
-    constraints: Array.isArray(ai.constraints)
-      ? ai.constraints.map((item) => String(item))
-      : heuristic.constraints
+    constraints: normalizedConstraints
   };
 }
 
@@ -425,6 +489,57 @@ function composeSlideMarkdown(
   ].join("\n");
 }
 
+function hasTopFrontmatter(markdown: string): boolean {
+  const normalized = markdown.replace(/\r\n?/g, "\n").trimStart();
+  if (!normalized.startsWith("---\n")) {
+    return false;
+  }
+
+  const secondLine = normalized.split("\n")[1] ?? "";
+  return secondLine.includes(":");
+}
+
+function unwrapMarkdownFence(markdown: string): string {
+  const trimmed = markdown.trim();
+  const fenced = trimmed.match(/^```(?:markdown|md)?\s*\n([\s\S]*?)\n```$/i);
+  if (fenced?.[1]) {
+    return fenced[1].trim();
+  }
+
+  return trimmed;
+}
+
+function dropLeadingSlideDelimiter(markdown: string): string {
+  const normalized = markdown.replace(/\r\n?/g, "\n").trimStart();
+  if (!normalized.startsWith("---\n")) {
+    return normalized.trim();
+  }
+
+  const afterFirstLine = normalized.slice(4).trimStart();
+  if (hasTopFrontmatter(afterFirstLine)) {
+    return afterFirstLine.trim();
+  }
+
+  return normalized.trim();
+}
+
+function normalizeRewrittenSlideMarkdown(candidate: string, fallback: string): string {
+  const unwrapped = unwrapMarkdownFence(candidate);
+  const cleaned = dropLeadingSlideDelimiter(unwrapped);
+
+  if (!hasTopFrontmatter(cleaned)) {
+    return fallback;
+  }
+
+  const parsed = parseDeckMarkdown(cleaned);
+  const firstSlide = parsed.slides[0];
+  if (!firstSlide) {
+    return fallback;
+  }
+
+  return `---\nlayout: ${firstSlide.layout}\n---\n${firstSlide.bodyMarkdown}`.trim();
+}
+
 async function maybeRewriteSlide(slideMarkdown: string, context: InferredContext, ruleset: RuleSet): Promise<string> {
   if (!hasOpenRouterApiKey()) {
     return slideMarkdown;
@@ -455,7 +570,7 @@ async function maybeRewriteSlide(slideMarkdown: string, context: InferredContext
       });
 
       if (result.text.trim().length > 0) {
-        return result.text.trim();
+        return normalizeRewrittenSlideMarkdown(result.text, slideMarkdown);
       }
     } catch {
       // Try fallback.
@@ -518,7 +633,7 @@ export async function* generateDeckEvents(
       }
     }
 
-    const fullMarkdown = slideMarkdownSegments.join("\n\n---\n\n");
+    const fullMarkdown = slideMarkdownSegments.join("\n\n");
     const parsedDeck = parseDeckMarkdown(fullMarkdown);
     const slides: SlideDocument[] = toSlideDocuments(parsedDeck);
 

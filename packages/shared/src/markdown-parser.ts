@@ -75,7 +75,7 @@ function extractTopLevelSegments(input: string): string[] {
 
   const pushCurrent = () => {
     const text = current.join("\n").trim();
-    if (text.length > 0) {
+    if (text.length > 0 && text !== "---") {
       segments.push(text);
     }
     current = [];
@@ -97,8 +97,8 @@ function extractTopLevelSegments(input: string): string[] {
       if (current.length === 0) {
         if (looksLikeFrontmatterStart) {
           insideFrontmatter = true;
+          current.push(line);
         }
-        current.push(line);
         continue;
       }
 
@@ -127,6 +127,10 @@ function extractTopLevelSegments(input: string): string[] {
   pushCurrent();
 
   if (segments.length > 1) {
+    return segments;
+  }
+
+  if (segments.length === 1) {
     return segments;
   }
 
@@ -292,7 +296,7 @@ export function parseDeckMarkdown(input: string): ParsedDeck {
     } satisfies ParsedSlide;
   });
 
-  const normalizedMarkdown = slides.map((slide) => normalizeSlideMarkdown(slide)).join("\n\n---\n\n");
+  const normalizedMarkdown = slides.map((slide) => normalizeSlideMarkdown(slide)).join("\n\n");
 
   return {
     slides,

@@ -16,6 +16,7 @@ describe("parseDeckMarkdown", () => {
     expect(parsed.slides).toHaveLength(2);
     expect(parsed.slides[0].layout).toBe("title-hero");
     expect(parsed.slides[1].layout).toBe("quote-focus");
+    expect(parsed.normalizedMarkdown).not.toContain("\n\n---\n\n---\nlayout:");
   });
 
   it("supports markdown syntax inside fenced containers", () => {
@@ -31,5 +32,13 @@ describe("parseDeckMarkdown", () => {
 
     expect(parsed.slides[0].containers).toHaveLength(2);
     expect(parsed.slides[0].warnings.join(" ")).toContain("Extra columns are ignored");
+  });
+
+  it("ignores stray separator before frontmatter", () => {
+    const parsed = parseDeckMarkdown(`---\n\n---\nlayout: title-hero\n---\n# Intro`);
+
+    expect(parsed.slides).toHaveLength(1);
+    expect(parsed.slides[0].layout).toBe("title-hero");
+    expect(parsed.slides[0].title).toBe("Intro");
   });
 });

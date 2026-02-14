@@ -12,8 +12,11 @@ import type {
   SlideDocument
 } from "@power/contracts";
 import { parseDeckMarkdown, toSlideDocuments } from "@power/shared";
-import { ChatInputPanel } from "@/features/chat-input/chat-input-panel";
-import { GenerationThreadPanel } from "@/features/generation-thread/generation-thread-panel";
+import {
+  ChatGenerationConversation,
+  type ConversationUserMessage,
+  type GenerationTaskState
+} from "@/features/chat-input/chat-generation-conversation";
 import { MarkdownEditorPanel } from "@/features/slide-workspace/components/markdown-editor-panel";
 import { SlideCanvas } from "@/features/slide-workspace/components/slide-canvas";
 import { SlideNav } from "@/features/slide-workspace/components/slide-nav";
@@ -30,13 +33,7 @@ const taskOrder: GenerationTaskId[] = [
   "compose_slides"
 ];
 
-interface TaskState {
-  id: GenerationTaskId;
-  status: "pending" | "running" | "completed" | "error";
-  message: string;
-}
-
-function createInitialTasks(): TaskState[] {
+function createInitialTasks(): GenerationTaskState[] {
   return taskOrder.map((id) => ({
     id,
     status: "pending",
@@ -45,11 +42,11 @@ function createInitialTasks(): TaskState[] {
 }
 
 function updateTask(
-  tasks: TaskState[],
+  tasks: GenerationTaskState[],
   taskId: GenerationTaskId,
-  status: TaskState["status"],
+  status: GenerationTaskState["status"],
   message: string
-): TaskState[] {
+): GenerationTaskState[] {
   return tasks.map((task) =>
     task.id === taskId
       ? {
@@ -105,7 +102,7 @@ async function* streamEvents(payload: GenerateDeckRequest): AsyncGenerator<Gener
 
 export function SlideWorkspaceShell() {
   const [phase, setPhase] = useState<"input" | "generating" | "workspace">("input");
-  const [tasks, setTasks] = useState<TaskState[]>(createInitialTasks);
+  const [tasks, setTasks] = useState<GenerationTaskState[]>(createInitialTasks);
   const [error, setError] = useState<string | null>(null);
   const [inferredContext, setInferredContext] = useState<InferredContext | null>(null);
   const [ruleset, setRuleset] = useState<RuleSet | null>(null);
@@ -114,6 +111,9 @@ export function SlideWorkspaceShell() {
   const [previewSlides, setPreviewSlides] = useState<SlideDocument[]>([]);
   const [selectedSlideId, setSelectedSlideId] = useState<string | null>(null);
   const [markdownText, setMarkdownText] = useState("");
+  const [userMessage, setUserMessage] = useState<ConversationUserMessage | null>(
+    null
+  );
 
   useEffect(() => {
     const raw = window.localStorage.getItem(storageKey);
@@ -153,6 +153,10 @@ export function SlideWorkspaceShell() {
   }, [phase, deck, previewSlides]);
 
   const submitPrompt = async (payload: GenerateDeckRequest) => {
+    setUserMessage({
+      prompt: payload.prompt,
+      attachmentName: payload.attachment?.name
+    });
     setPhase("generating");
     setTasks(createInitialTasks());
     setError(null);
@@ -239,19 +243,21 @@ export function SlideWorkspaceShell() {
     <main className="min-h-screen space-y-4 bg-zinc-100 p-4 text-zinc-900 md:p-6">
       <section
         className={cn(
-          "grid gap-4 print:hidden xl:grid-cols-2",
-          phase === "workspace" && "xl:grid-cols-[1.2fr_1fr]"
+          "grid gap-4 print:hidden",
+          phase === "workspace" && "xl:grid-cols-[1fr]"
         )}
         data-testid="top-chat-shell"
       >
-        <ChatInputPanel isLoading={phase === "generating"} onSubmit={submitPrompt} />
-        <GenerationThreadPanel
+        <ChatGenerationConversation
+          isLoading={phase === "generating"}
+          onSubmit={submitPrompt}
           tasks={tasks}
           error={error}
           deck={deck}
           inferredContext={inferredContext}
           ruleset={ruleset}
           outline={outline}
+          userMessage={userMessage}
         />
       </section>
 
