@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   DeckDocument,
   GenerateDeckRequest,
@@ -19,10 +19,15 @@ import {
 } from "@/features/chat-input/chat-generation-conversation";
 import { MarkdownEditorPanel } from "@/features/slide-workspace/components/markdown-editor-panel";
 import { SlideCanvas } from "@/features/slide-workspace/components/slide-canvas";
-import { SlideNav } from "@/features/slide-workspace/components/slide-nav";
+import {
+  SlideNav,
+  type SlideSelectionSignal,
+  type SlideThumbnailLiveSignal
+} from "@/features/slide-workspace/components/slide-nav";
 import { cn } from "@/lib/utils";
 
 const storageKey = "power.deck.current";
+const navSelectionDelayMs = 90;
 
 const taskOrder: GenerationTaskId[] = [
   "ingest_input",
@@ -110,10 +115,55 @@ export function SlideWorkspaceShell() {
   const [deck, setDeck] = useState<DeckDocument | null>(null);
   const [previewSlides, setPreviewSlides] = useState<SlideDocument[]>([]);
   const [selectedSlideId, setSelectedSlideId] = useState<string | null>(null);
+  const [selectionSignal, setSelectionSignal] = useState<SlideSelectionSignal | null>(null);
+  const [thumbnailLiveSignal, setThumbnailLiveSignal] = useState<SlideThumbnailLiveSignal | null>(null);
   const [markdownText, setMarkdownText] = useState("");
   const [userMessage, setUserMessage] = useState<ConversationUserMessage | null>(
     null
   );
+  const selectionSignalNonceRef = useRef(0);
+  const thumbnailSignalNonceRef = useRef(0);
+  const navSelectionTimeoutRef = useRef<number | null>(null);
+
+  const emitSelectionSignal = (slideId: string, source: SlideSelectionSignal["source"]) => {
+    selectionSignalNonceRef.current += 1;
+    setSelectionSignal({
+      slideId,
+      source,
+      nonce: selectionSignalNonceRef.current
+    });
+  };
+
+  const emitThumbnailLiveSignal = (slideId: string, source: SlideThumbnailLiveSignal["source"]) => {
+    thumbnailSignalNonceRef.current += 1;
+    setThumbnailLiveSignal({
+      slideId,
+      source,
+      nonce: thumbnailSignalNonceRef.current
+    });
+  };
+
+  const selectSlideFromNav = (slideId: string) => {
+    if (navSelectionTimeoutRef.current !== null) {
+      window.clearTimeout(navSelectionTimeoutRef.current);
+    }
+
+    navSelectionTimeoutRef.current = window.setTimeout(() => {
+      navSelectionTimeoutRef.current = null;
+      setSelectedSlideId(slideId);
+      emitSelectionSignal(slideId, "nav");
+    }, navSelectionDelayMs);
+  };
+
+  const selectSlideFromMarkdown = (slideId: string) => {
+    setSelectedSlideId(slideId);
+    emitSelectionSignal(slideId, "markdown");
+    emitThumbnailLiveSignal(slideId, "select");
+  };
+
+  const onSlideEdit = (slideId: string) => {
+    emitThumbnailLiveSignal(slideId, "edit");
+  };
 
   useEffect(() => {
     const raw = window.localStorage.getItem(storageKey);
@@ -143,6 +193,14 @@ export function SlideWorkspaceShell() {
 
     window.localStorage.setItem(storageKey, JSON.stringify(deck));
   }, [deck]);
+
+  useEffect(() => {
+    return () => {
+      if (navSelectionTimeoutRef.current !== null) {
+        window.clearTimeout(navSelectionTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const displaySlides = useMemo(() => {
     if (phase === "workspace") {
@@ -267,11 +325,19 @@ export function SlideWorkspaceShell() {
       >
         <SlideNav
           slides={displaySlides}
+          selectionSignal={selectionSignal}
+          liveSignal={thumbnailLiveSignal}
           selectedSlideId={selectedSlideId}
-          onSelectSlide={(slideId) => setSelectedSlideId(slideId)}
+          onSelectSlide={selectSlideFromNav}
         />
         <SlideCanvas slides={displaySlides} activeSlideId={selectedSlideId} />
-        <MarkdownEditorPanel markdown={markdownText} onChange={onMarkdownChange} />
+        <MarkdownEditorPanel
+          markdown={markdownText}
+          selectedSlideId={selectedSlideId}
+          onChange={onMarkdownChange}
+          onSelectSlide={selectSlideFromMarkdown}
+          onSlideEdit={onSlideEdit}
+        />
       </section>
     </main>
   );

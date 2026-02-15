@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { SlideDocument } from "@power/contracts";
 import { SlideRenderer } from "@power/ui";
@@ -13,20 +13,55 @@ interface SlideCanvasProps {
 
 const pageWidth = 1920;
 const pageHeight = 1080;
+const maxScale = 0.9;
+const minScale = 0.05;
 
 export function SlideCanvas({ slides, activeSlideId }: SlideCanvasProps) {
-  const [scale, setScale] = useState(0.9);
+  const [scale, setScale] = useState(minScale);
+  const [frameSize, setFrameSize] = useState({ width: pageWidth * minScale, height: pageHeight * minScale });
+  const viewportRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const setResponsiveScale = () => {
-      const responsiveScale = Math.min(0.9, (window.innerWidth / pageWidth) * 0.9);
-      setScale(responsiveScale);
+      const viewportElement = viewportRef.current;
+
+      if (!viewportElement) {
+        return;
+      }
+
+      const { width, height } = viewportElement.getBoundingClientRect();
+      const widthScale = width > 0 ? width / pageWidth : Number.POSITIVE_INFINITY;
+      const heightScale = height > 0 ? height / pageHeight : Number.POSITIVE_INFINITY;
+      const containScale = Math.min(maxScale, widthScale, heightScale);
+      const nextScale = Number.isFinite(containScale) && containScale > 0 ? Math.max(minScale, containScale) : minScale;
+      const nextWidth = pageWidth * nextScale;
+      const nextHeight = pageHeight * nextScale;
+
+      setScale(nextScale);
+      setFrameSize({ width: nextWidth, height: nextHeight });
     };
 
-    setResponsiveScale();
+    const measureOnNextFrame = () => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      window.requestAnimationFrame(setResponsiveScale);
+    };
+
+    measureOnNextFrame();
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(setResponsiveScale) : null;
+    const viewportElement = viewportRef.current;
+
+    if (resizeObserver && viewportElement) {
+      resizeObserver.observe(viewportElement);
+    }
+
     window.addEventListener("resize", setResponsiveScale);
 
     return () => {
+      resizeObserver?.disconnect();
       window.removeEventListener("resize", setResponsiveScale);
     };
   }, []);
@@ -49,7 +84,7 @@ export function SlideCanvas({ slides, activeSlideId }: SlideCanvasProps) {
 
   const liveStyle: CSSProperties = {
     transform: `scale(${scale})`,
-    transformOrigin: "top center"
+    transformOrigin: "top left"
   };
 
   const printStyle: CSSProperties = {
@@ -57,15 +92,30 @@ export function SlideCanvas({ slides, activeSlideId }: SlideCanvasProps) {
   };
 
   return (
-    <section aria-label="Slide canvas" className="min-h-[72vh] overflow-auto" data-testid="slide-canvas">
-      <Card className="grid justify-center overflow-auto p-4 print:hidden">
-        <article
-          className="relative h-[1080px] w-[1920px] overflow-hidden border border-zinc-200 bg-white shadow-sm"
-          data-testid="live-slide-page"
-          style={liveStyle}
-        >
-          <SlideRenderer slide={activeSlide} />
-        </article>
+    <section
+      aria-label="Slide canvas"
+      className="relative min-h-[72vh] min-w-0 overflow-hidden"
+      data-testid="slide-canvas"
+    >
+      <Card className="absolute inset-0 h-full min-w-0 overflow-hidden p-4 print:hidden">
+        <div className="relative h-full w-full min-w-0 overflow-hidden" ref={viewportRef}>
+          <div
+            className="absolute left-1/2 top-1/2 overflow-hidden"
+            style={{
+              height: `${frameSize.height}px`,
+              width: `${frameSize.width}px`,
+              transform: "translate(-50%, -50%)"
+            }}
+          >
+            <article
+              className="absolute left-0 top-0 h-[1080px] w-[1920px] overflow-hidden border border-zinc-200 bg-white shadow-sm"
+              data-testid="live-slide-page"
+              style={liveStyle}
+            >
+              <SlideRenderer slide={activeSlide} />
+            </article>
+          </div>
+        </div>
       </Card>
 
       <div className="hidden print:block" data-testid="print-pages">

@@ -1,7 +1,23 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+const navSelectionSwapDebounceMs = 250;
 
 function sseEvent(payload: object): string {
   return `data: ${JSON.stringify(payload)}\n\n`;
+}
+
+function titleHeroSlide(index: number) {
+  return {
+    id: `slide-${index}`,
+    layout: "title-hero" as const,
+    rawMarkdown: `---\nlayout: title-hero\n---\n# Slide ${index}\n\nBody ${index}`,
+    containers: [],
+    warnings: []
+  };
+}
+
+function thumbnailFor(page: Page, slideId: string) {
+  return page.getByTestId(`slide-thumbnail-${slideId}`);
 }
 
 test("generates deck, opens workspace, supports markdown edits", async ({ page }) => {
@@ -82,10 +98,113 @@ test("generates deck, opens workspace, supports markdown edits", async ({ page }
 
   await expect(page.getByText("Generated 2 slides", { exact: false })).toBeVisible();
   await expect(page.getByTestId("workspace-shell")).toBeVisible();
+  await expect(thumbnailFor(page, "slide-1")).toHaveAttribute("data-thumbnail-mode", "bitmap");
+  await expect(thumbnailFor(page, "slide-2")).toHaveAttribute("data-thumbnail-mode", "bitmap");
+  await expect(thumbnailFor(page, "slide-1").locator("img")).toHaveAttribute("src", /^data:image\/png;base64,/);
+  await expect(thumbnailFor(page, "slide-2").locator("img")).toHaveAttribute("src", /^data:image\/png;base64,/);
 
-  const editor = page.getByLabel("Deck markdown editor");
-  await editor.fill("---\nlayout: title-hero\n---\n# Updated intro\n\nNew copy");
+  const firstSlideEditor = page.getByLabel("Deck markdown for slide 1");
+  const secondSlideEditor = page.getByLabel("Deck markdown for slide 2");
+  const firstThumbnailBeforeEdit = await thumbnailFor(page, "slide-1").locator("img").getAttribute("src");
+
+  await page.getByRole("button", { name: /Slide 2/i }).click();
+  await expect(thumbnailFor(page, "slide-2")).toHaveAttribute("data-thumbnail-mode", "bitmap");
+  await expect(thumbnailFor(page, "slide-1")).toHaveAttribute("data-thumbnail-mode", "bitmap");
+
+  await firstSlideEditor.click();
+  await expect(thumbnailFor(page, "slide-1")).toHaveAttribute("data-thumbnail-mode", "live");
+  await expect(thumbnailFor(page, "slide-2")).toHaveAttribute("data-thumbnail-mode", "bitmap");
+
+  await firstSlideEditor.fill("---\nlayout: title-hero\n---\n# Updated intro\n\nNew copy");
+  await expect(thumbnailFor(page, "slide-1")).toHaveAttribute("data-thumbnail-mode", "live");
 
   await expect(page.getByTestId("live-slide-page").locator("h1")).toContainText("Updated intro");
-  await expect(page.getByTestId("print-pages").locator("article")).toHaveCount(1);
+
+  await secondSlideEditor.click();
+  await expect(thumbnailFor(page, "slide-2")).toHaveAttribute("data-thumbnail-mode", "live");
+  await expect(thumbnailFor(page, "slide-1")).toHaveAttribute("data-thumbnail-mode", "bitmap");
+
+  await expect
+    .poll(async () => thumbnailFor(page, "slide-1").locator("img").getAttribute("src"))
+    .not.toEqual(firstThumbnailBeforeEdit);
+
+  await expect(secondSlideEditor).toHaveAttribute("data-active", "true");
+  await expect(firstSlideEditor).toHaveAttribute("data-active", "false");
+  await expect(page.getByTestId("live-slide-page")).toContainText("Left");
+
+  await expect(page.getByTestId("print-pages").locator("article")).toHaveCount(2);
+});
+
+test("clicking slide nav scrolls markdown editor to selected slide", async ({ page }) => {
+  await page.route("**/api/decks/generate", async (route) => {
+    const slides = Array.from({ length: 6 }, (_, index) => titleHeroSlide(index + 1));
+    const deck = {
+      deckId: "deck-scroll-e2e",
+      slides,
+      fullMarkdown: slides.map((slide) => slide.rawMarkdown).join("\n\n---\n\n"),
+      inferredContext: {
+        audience: "exec",
+        tone: "clear",
+        language: "en",
+        speechLevel: "clear",
+        objective: "inform"
+      },
+      ruleset: {
+        listSentenceSchema: "start with verb",
+        titleStyle: "short",
+        maxBulletsPerSlide: 5,
+        constraints: []
+      },
+      outline: slides.map((slide, index) => ({
+        id: String(index + 1),
+        title: `Slide ${index + 1}`,
+        summary: `Body ${index + 1}`,
+        intent: "content"
+      }))
+    };
+
+    const body = [
+      sseEvent({ type: "task_started", taskId: "ingest_input", message: "Collecting" }),
+      sseEvent({ type: "task_completed", taskId: "ingest_input", message: "Done" }),
+      sseEvent({ type: "task_started", taskId: "compose_slides", message: "Composing" }),
+      sseEvent({ type: "task_completed", taskId: "compose_slides", message: "Done" }),
+      sseEvent({ type: "deck_completed", deck })
+    ].join("");
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        "content-type": "text/event-stream"
+      },
+      body
+    });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Prompt").fill("Create a 6 slide deck");
+  await page.getByRole("button", { name: "Generate deck" }).click();
+
+  await expect(page.getByText("Generated 6 slides", { exact: false })).toBeVisible();
+  await expect(page.getByTestId("workspace-shell")).toBeVisible();
+  await expect(thumbnailFor(page, "slide-1")).toHaveAttribute("data-thumbnail-mode", "bitmap");
+
+  const firstSlideEditor = page.getByLabel("Deck markdown for slide 1");
+
+  await firstSlideEditor.fill("---\nlayout: title-hero\n---\n# Slide 1 edited\n\nBody 1");
+  await expect(thumbnailFor(page, "slide-1")).toHaveAttribute("data-thumbnail-mode", "live");
+
+  const editorContainer = page.getByLabel("Deck markdown editor");
+  const topBefore = await editorContainer.evaluate((node) => node.scrollTop);
+
+  await page.getByRole("button", { name: /Slide 6/i }).click();
+  await expect(thumbnailFor(page, "slide-6")).toHaveAttribute("data-thumbnail-mode", "bitmap");
+  await expect(thumbnailFor(page, "slide-1")).toHaveAttribute("data-thumbnail-mode", "live");
+  await page.waitForTimeout(navSelectionSwapDebounceMs + 80);
+  await expect.poll(async () => thumbnailFor(page, "slide-1").getAttribute("data-thumbnail-mode")).toBe("bitmap");
+
+  await expect(page.getByLabel("Deck markdown for slide 6")).toHaveAttribute("data-active", "true");
+  await expect(page.getByTestId("live-slide-page").locator("h1")).toContainText("Slide 6");
+  await expect
+    .poll(async () => editorContainer.evaluate((node) => node.scrollTop))
+    .toBeGreaterThan(topBefore);
 });
