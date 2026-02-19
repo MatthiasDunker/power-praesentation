@@ -9,20 +9,20 @@ import type {
   InferredContext,
   OutlineItem,
   RuleSet,
-  SlideDocument
+  SlideDocument,
 } from "@power/contracts";
 import { parseDeckMarkdown, toSlideDocuments } from "@power/shared";
 import {
   ChatGenerationConversation,
   type ConversationUserMessage,
-  type GenerationTaskState
+  type GenerationTaskState,
 } from "@/features/chat-input/chat-generation-conversation";
 import { MarkdownEditorPanel } from "@/features/slide-workspace/components/markdown-editor-panel";
 import { SlideCanvas } from "@/features/slide-workspace/components/slide-canvas";
 import {
   SlideNav,
   type SlideSelectionSignal,
-  type SlideThumbnailLiveSignal
+  type SlideThumbnailLiveSignal,
 } from "@/features/slide-workspace/components/slide-nav";
 import { cn } from "@/lib/utils";
 
@@ -35,14 +35,14 @@ const taskOrder: GenerationTaskId[] = [
   "derive_ruleset",
   "build_outline",
   "match_templates",
-  "compose_slides"
+  "compose_slides",
 ];
 
 function createInitialTasks(): GenerationTaskState[] {
   return taskOrder.map((id) => ({
     id,
     status: "pending",
-    message: "waiting"
+    message: "waiting",
   }));
 }
 
@@ -50,26 +50,28 @@ function updateTask(
   tasks: GenerationTaskState[],
   taskId: GenerationTaskId,
   status: GenerationTaskState["status"],
-  message: string
+  message: string,
 ): GenerationTaskState[] {
   return tasks.map((task) =>
     task.id === taskId
       ? {
           ...task,
           status,
-          message
+          message,
         }
-      : task
+      : task,
   );
 }
 
-async function* streamEvents(payload: GenerateDeckRequest): AsyncGenerator<GenerationStreamEvent> {
+async function* streamEvents(
+  payload: GenerateDeckRequest,
+): AsyncGenerator<GenerationStreamEvent> {
   const response = await fetch("/api/decks/generate", {
     method: "POST",
     headers: {
-      "content-type": "application/json"
+      "content-type": "application/json",
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok || !response.body) {
@@ -106,40 +108,50 @@ async function* streamEvents(payload: GenerateDeckRequest): AsyncGenerator<Gener
 }
 
 export function SlideWorkspaceShell() {
-  const [phase, setPhase] = useState<"input" | "generating" | "workspace">("input");
+  const [phase, setPhase] = useState<"input" | "generating" | "workspace">(
+    "input",
+  );
   const [tasks, setTasks] = useState<GenerationTaskState[]>(createInitialTasks);
   const [error, setError] = useState<string | null>(null);
-  const [inferredContext, setInferredContext] = useState<InferredContext | null>(null);
+  const [inferredContext, setInferredContext] =
+    useState<InferredContext | null>(null);
   const [ruleset, setRuleset] = useState<RuleSet | null>(null);
   const [outline, setOutline] = useState<OutlineItem[]>([]);
   const [deck, setDeck] = useState<DeckDocument | null>(null);
   const [previewSlides, setPreviewSlides] = useState<SlideDocument[]>([]);
   const [selectedSlideId, setSelectedSlideId] = useState<string | null>(null);
-  const [selectionSignal, setSelectionSignal] = useState<SlideSelectionSignal | null>(null);
-  const [thumbnailLiveSignal, setThumbnailLiveSignal] = useState<SlideThumbnailLiveSignal | null>(null);
+  const [selectionSignal, setSelectionSignal] =
+    useState<SlideSelectionSignal | null>(null);
+  const [thumbnailLiveSignal, setThumbnailLiveSignal] =
+    useState<SlideThumbnailLiveSignal | null>(null);
   const [markdownText, setMarkdownText] = useState("");
-  const [userMessage, setUserMessage] = useState<ConversationUserMessage | null>(
-    null
-  );
+  const [userMessage, setUserMessage] =
+    useState<ConversationUserMessage | null>(null);
   const selectionSignalNonceRef = useRef(0);
   const thumbnailSignalNonceRef = useRef(0);
   const navSelectionTimeoutRef = useRef<number | null>(null);
 
-  const emitSelectionSignal = (slideId: string, source: SlideSelectionSignal["source"]) => {
+  const emitSelectionSignal = (
+    slideId: string,
+    source: SlideSelectionSignal["source"],
+  ) => {
     selectionSignalNonceRef.current += 1;
     setSelectionSignal({
       slideId,
       source,
-      nonce: selectionSignalNonceRef.current
+      nonce: selectionSignalNonceRef.current,
     });
   };
 
-  const emitThumbnailLiveSignal = (slideId: string, source: SlideThumbnailLiveSignal["source"]) => {
+  const emitThumbnailLiveSignal = (
+    slideId: string,
+    source: SlideThumbnailLiveSignal["source"],
+  ) => {
     thumbnailSignalNonceRef.current += 1;
     setThumbnailLiveSignal({
       slideId,
       source,
-      nonce: thumbnailSignalNonceRef.current
+      nonce: thumbnailSignalNonceRef.current,
     });
   };
 
@@ -180,7 +192,13 @@ export function SlideWorkspaceShell() {
       setRuleset(parsed.ruleset);
       setOutline(parsed.outline);
       setPhase("workspace");
-      setTasks(taskOrder.map((id) => ({ id, status: "completed", message: "completed" })));
+      setTasks(
+        taskOrder.map((id) => ({
+          id,
+          status: "completed",
+          message: "completed",
+        })),
+      );
     } catch {
       window.localStorage.removeItem(storageKey);
     }
@@ -213,7 +231,7 @@ export function SlideWorkspaceShell() {
   const submitPrompt = async (payload: GenerateDeckRequest) => {
     setUserMessage({
       prompt: payload.prompt,
-      attachmentName: payload.attachment?.name
+      attachmentName: payload.attachment?.name,
     });
     setPhase("generating");
     setTasks(createInitialTasks());
@@ -227,24 +245,34 @@ export function SlideWorkspaceShell() {
     try {
       for await (const event of streamEvents(payload)) {
         if (event.type === "task_started") {
-          setTasks((current) => updateTask(current, event.taskId, "running", event.message));
+          setTasks((current) =>
+            updateTask(current, event.taskId, "running", event.message),
+          );
           continue;
         }
 
         if (event.type === "task_progress") {
-          setTasks((current) => updateTask(current, event.taskId, "running", event.message));
+          setTasks((current) =>
+            updateTask(current, event.taskId, "running", event.message),
+          );
           continue;
         }
 
         if (event.type === "task_completed") {
-          setTasks((current) => updateTask(current, event.taskId, "completed", event.message));
+          setTasks((current) =>
+            updateTask(current, event.taskId, "completed", event.message),
+          );
           continue;
         }
 
         if (event.type === "slide_partial") {
           setPreviewSlides((current) => {
-            const withoutSame = current.filter((slide) => slide.id !== event.slide.id);
-            return [...withoutSame, event.slide].sort((left, right) => left.id.localeCompare(right.id));
+            const withoutSame = current.filter(
+              (slide) => slide.id !== event.slide.id,
+            );
+            return [...withoutSame, event.slide].sort((left, right) =>
+              left.id.localeCompare(right.id),
+            );
           });
           continue;
         }
@@ -264,13 +292,18 @@ export function SlideWorkspaceShell() {
           setError(event.message);
           const taskId = event.taskId;
           if (taskId) {
-            setTasks((current) => updateTask(current, taskId, "error", event.message));
+            setTasks((current) =>
+              updateTask(current, taskId, "error", event.message),
+            );
           }
           setPhase("input");
         }
       }
     } catch (streamError) {
-      const message = streamError instanceof Error ? streamError.message : "Unknown stream error";
+      const message =
+        streamError instanceof Error
+          ? streamError.message
+          : "Unknown stream error";
       setError(message);
       setPhase("input");
     }
@@ -288,21 +321,24 @@ export function SlideWorkspaceShell() {
     const nextDeck: DeckDocument = {
       ...deck,
       slides,
-      fullMarkdown: parsed.normalizedMarkdown
+      fullMarkdown: parsed.normalizedMarkdown,
     };
 
     setDeck(nextDeck);
-    if (slides.length > 0 && !slides.some((slide) => slide.id === selectedSlideId)) {
+    if (
+      slides.length > 0 &&
+      !slides.some((slide) => slide.id === selectedSlideId)
+    ) {
       setSelectedSlideId(slides[0].id);
     }
   };
 
   return (
-    <main className="min-h-screen space-y-4 bg-zinc-100 p-4 text-zinc-900 md:p-6">
+    <main className="min-h-screen text-zinc-900">
       <section
         className={cn(
           "grid gap-4 print:hidden",
-          phase === "workspace" && "xl:grid-cols-[1fr]"
+          phase === "workspace" && "xl:grid-cols-[1fr]",
         )}
         data-testid="top-chat-shell"
       >
@@ -320,7 +356,7 @@ export function SlideWorkspaceShell() {
       </section>
 
       <section
-        className="grid min-h-[66vh] gap-4 lg:grid-cols-[220px_minmax(0,1fr)_360px] print:block"
+        className="grid h-screen gap-4 lg:grid-cols-[220px_minmax(0,1fr)_360px] print:block"
         data-testid="workspace-shell"
       >
         <SlideNav

@@ -1,0 +1,7 @@
+{
+  "workbench.colorCustomizations": {
+    "titleBar.activeBackground": "#72c9ff",
+    "titleBar.activeForeground": "#220F0F"
+  },
+  "window.title": "Markdown2slides.com${separator}${rootName}"
+}

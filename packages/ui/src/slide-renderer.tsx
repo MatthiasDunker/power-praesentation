@@ -16,7 +16,10 @@ function stripFrontmatter(markdown: string): string {
     return markdown;
   }
 
-  return lines.slice(endIndex + 2).join("\n").trim();
+  return lines
+    .slice(endIndex + 2)
+    .join("\n")
+    .trim();
 }
 
 function baseContent(slide: SlideDocument): string {
@@ -28,7 +31,9 @@ function templateTextClassName() {
 }
 
 function renderTwoColumn(slide: SlideDocument) {
-  const columns = slide.containers.filter((container) => container.kind === "column");
+  const columns = slide.containers.filter(
+    (container) => container.kind === "column",
+  );
   const left = columns[0]?.markdown ?? "";
   const right = columns[1]?.markdown ?? "";
 
@@ -51,27 +56,39 @@ export function SlideRenderer({ slide }: SlideRendererProps) {
   switch (slide.layout) {
     case "title-hero":
       return (
-        <section className={`${baseTemplateClass} flex flex-col justify-center`}>
+        <section
+          className={`${baseTemplateClass} flex flex-col justify-center`}
+        >
           <BasicMarkdown markdown={content} />
         </section>
       );
     case "section-divider":
       return (
-        <section className={`${baseTemplateClass} grid place-content-center text-center`}>
+        <section
+          className={`${baseTemplateClass} grid place-content-center text-center`}
+        >
           <BasicMarkdown markdown={content} />
         </section>
       );
     case "two-column":
-      return <section className={baseTemplateClass}>{renderTwoColumn(slide)}</section>;
+      return (
+        <section className={baseTemplateClass}>
+          {renderTwoColumn(slide)}
+        </section>
+      );
     case "quote-focus":
       return (
-        <section className={`${baseTemplateClass} [&_p]:text-[44px] [&_p]:italic`}>
+        <section
+          className={`${baseTemplateClass} [&_p]:text-[44px] [&_p]:italic`}
+        >
           <BasicMarkdown markdown={content} />
         </section>
       );
     case "image-left-copy":
       return (
-        <section className={`${baseTemplateClass} grid grid-cols-[44%_56%] gap-6`}>
+        <section
+          className={`${baseTemplateClass} grid grid-cols-[44%_56%] gap-6`}
+        >
           <div className="rounded-md border border-zinc-200 bg-zinc-100" />
           <div className="self-center">
             <BasicMarkdown markdown={content} />
@@ -80,7 +97,9 @@ export function SlideRenderer({ slide }: SlideRendererProps) {
       );
     case "image-right-copy":
       return (
-        <section className={`${baseTemplateClass} grid grid-cols-[56%_44%] gap-6`}>
+        <section
+          className={`${baseTemplateClass} grid grid-cols-[56%_44%] gap-6`}
+        >
           <div className="self-center">
             <BasicMarkdown markdown={content} />
           </div>
@@ -89,7 +108,9 @@ export function SlideRenderer({ slide }: SlideRendererProps) {
       );
     case "metric-highlight":
       return (
-        <section className={`${baseTemplateClass} [&_h2]:text-[62px] [&_li]:text-[36px]`}>
+        <section
+          className={`${baseTemplateClass} [&_h2]:text-[62px] [&_li]:text-[36px]`}
+        >
           <BasicMarkdown markdown={content} />
         </section>
       );

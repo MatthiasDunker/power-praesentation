@@ -5,7 +5,6 @@ import type { SlideDocument } from "@power/contracts";
 import { SlideRenderer } from "@power/ui";
 import { toPng } from "html-to-image";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 const thumbnailDisplayWidth = 176;
@@ -14,6 +13,7 @@ const thumbnailBitmapWidth = 352;
 const thumbnailBitmapHeight = 198;
 const slideWidth = 1920;
 const slideHeight = 1080;
+const slideAspectRatio = slideWidth / slideHeight;
 const navSelectionSwapDebounceMs = 250;
 
 export interface SlideThumbnailLiveSignal {
@@ -54,7 +54,7 @@ function createFingerprint(slide: SlideDocument): string {
     layout: slide.layout,
     rawMarkdown: slide.rawMarkdown,
     containers: slide.containers,
-    warnings: slide.warnings
+    warnings: slide.warnings,
   });
 }
 
@@ -63,9 +63,11 @@ export function SlideNav({
   selectedSlideId,
   selectionSignal,
   liveSignal,
-  onSelectSlide
+  onSelectSlide,
 }: SlideNavProps) {
-  const [bitmapBySlideId, setBitmapBySlideId] = useState<Record<string, string>>({});
+  const [bitmapBySlideId, setBitmapBySlideId] = useState<
+    Record<string, string>
+  >({});
   const [liveSlideId, setLiveSlideId] = useState<string | null>(null);
   const [captureSlideId, setCaptureSlideId] = useState<string | null>(null);
 
@@ -80,12 +82,17 @@ export function SlideNav({
   const queuedCaptureRef = useRef<Set<string>>(new Set());
   const isCaptureProcessingRef = useRef(false);
 
-  const slidesById = useMemo(() => new Map(slides.map((slide) => [slide.id, slide])), [slides]);
+  const slidesById = useMemo(
+    () => new Map(slides.map((slide) => [slide.id, slide])),
+    [slides],
+  );
   const fingerprintBySlideId = useMemo(
     () => new Map(slides.map((slide) => [slide.id, createFingerprint(slide)])),
-    [slides]
+    [slides],
   );
-  const captureSlide = captureSlideId ? slidesById.get(captureSlideId) ?? null : null;
+  const captureSlide = captureSlideId
+    ? (slidesById.get(captureSlideId) ?? null)
+    : null;
 
   useEffect(() => {
     slidesByIdRef.current = slidesById;
@@ -134,7 +141,10 @@ export function SlideNav({
         return;
       }
 
-      if (captureSlideIdRef.current === slideId || queuedCaptureRef.current.has(slideId)) {
+      if (
+        captureSlideIdRef.current === slideId ||
+        queuedCaptureRef.current.has(slideId)
+      ) {
         return;
       }
 
@@ -142,7 +152,7 @@ export function SlideNav({
       queuedCaptureRef.current.add(slideId);
       drainCaptureQueue();
     },
-    [drainCaptureQueue]
+    [drainCaptureQueue],
   );
 
   const activateLiveSlide = useCallback(
@@ -161,7 +171,7 @@ export function SlideNav({
       activeLiveSlideIdRef.current = slideId;
       setLiveSlideId(slideId);
     },
-    [clearNavSelectionSwapTimer, enqueueCapture]
+    [clearNavSelectionSwapTimer, enqueueCapture],
   );
 
   useEffect(() => {
@@ -188,7 +198,10 @@ export function SlideNav({
       navSelectionSwapTimerRef.current = null;
 
       const liveSlideAtTimeout = activeLiveSlideIdRef.current;
-      if (!liveSlideAtTimeout || liveSlideAtTimeout === selectedSlideIdRef.current) {
+      if (
+        !liveSlideAtTimeout ||
+        liveSlideAtTimeout === selectedSlideIdRef.current
+      ) {
         return;
       }
 
@@ -222,13 +235,18 @@ export function SlideNav({
       });
     }
 
-    if (activeLiveSlideIdRef.current && !slideIds.has(activeLiveSlideIdRef.current)) {
+    if (
+      activeLiveSlideIdRef.current &&
+      !slideIds.has(activeLiveSlideIdRef.current)
+    ) {
       activeLiveSlideIdRef.current = null;
       setLiveSlideId(null);
     }
 
     for (const slide of slides) {
-      const previousFingerprint = knownFingerprintBySlideIdRef.current.get(slide.id);
+      const previousFingerprint = knownFingerprintBySlideIdRef.current.get(
+        slide.id,
+      );
       const nextFingerprint = fingerprintBySlideId.get(slide.id) ?? "";
       const hasChanged = previousFingerprint !== nextFingerprint;
       knownFingerprintBySlideIdRef.current.set(slide.id, nextFingerprint);
@@ -242,7 +260,9 @@ export function SlideNav({
       }
     }
 
-    captureQueueRef.current = captureQueueRef.current.filter((slideId) => slideIds.has(slideId));
+    captureQueueRef.current = captureQueueRef.current.filter((slideId) =>
+      slideIds.has(slideId),
+    );
     queuedCaptureRef.current = new Set(captureQueueRef.current);
   }, [bitmapBySlideId, enqueueCapture, fingerprintBySlideId, slides]);
 
@@ -257,7 +277,9 @@ export function SlideNav({
     const capture = async () => {
       const waitForPaint = () =>
         new Promise<void>((resolve) => {
-          window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
+          window.requestAnimationFrame(() =>
+            window.requestAnimationFrame(() => resolve()),
+          );
         });
 
       try {
@@ -273,7 +295,7 @@ export function SlideNav({
           canvasWidth: thumbnailBitmapWidth,
           canvasHeight: thumbnailBitmapHeight,
           pixelRatio: 1,
-          backgroundColor: "#ffffff"
+          backgroundColor: "#ffffff",
         });
 
         if (cancelled) {
@@ -282,7 +304,7 @@ export function SlideNav({
 
         setBitmapBySlideId((current) => ({
           ...current,
-          [currentCaptureSlideId]: dataUrl
+          [currentCaptureSlideId]: dataUrl,
         }));
       } catch (error) {
         console.warn("Thumbnail capture failed", error);
@@ -312,8 +334,11 @@ export function SlideNav({
 
   return (
     <>
-      <Card className="h-full max-h-[72vh] overflow-auto p-2 print:hidden md:max-h-none">
-        <aside className="grid gap-2 md:grid-cols-1" data-testid="slide-nav">
+      <div className="h-full overflow-y-scroll print:hidden md:max-h-none p-4">
+        <aside
+          className="grid gap-2 md:grid-cols-1 -m-2"
+          data-testid="slide-nav"
+        >
           {slides.map((slide, index) => {
             const bitmap = bitmapBySlideId[slide.id];
             const isLive = liveSlideId === slide.id;
@@ -323,37 +348,48 @@ export function SlideNav({
               ? {
                   backgroundColor: "Highlight",
                   color: "HighlightText",
-                  borderColor: "Highlight"
+                  borderColor: "Highlight",
                 }
-              : undefined;
+              : {};
 
             return (
               <Button
                 className={cn(
-                  "h-auto w-full flex-col items-start gap-2 border-0 px-3 py-2 text-left shadow-none",
-                  isSelected ? "bg-zinc-900 text-white hover:bg-zinc-800" : ""
+                  "h-auto w-full flex-col items-start gap-2 border-0 bg-transparent p-2 text-left shadow-none transition-none",
+                  !isSelected ? "hover:bg-transparent hover:text-inherit" : "",
                 )}
                 key={slide.id}
                 onClick={() => onSelectSlide(slide.id)}
                 type="button"
-                variant={isSelected ? "default" : "outline"}
-                style={selectedButtonStyle}
+                variant={isSelected ? "default" : "ghost"}
+                style={{
+                  ...selectedButtonStyle,
+                  width: thumbnailDisplayWidth + 16,
+                }}
               >
                 <span
                   aria-hidden
                   className={cn(
-                    "relative h-[99px] w-[176px] overflow-hidden rounded-sm border",
-                    isSelected ? "border-zinc-700 bg-zinc-800/80 text-zinc-200" : "border-zinc-200 bg-zinc-50 text-zinc-500"
+                    "relative aspect-video overflow-hidden rounded-sm border",
+                    isSelected
+                      ? "border-zinc-700 bg-zinc-800/80 text-zinc-200"
+                      : "border-zinc-200 bg-zinc-50 text-zinc-500 [button:hover_>_&]:ring-2 [button:hover_>_&]:ring-zinc-300",
                   )}
+                  style={{
+                    aspectRatio: slideAspectRatio,
+                    width: thumbnailDisplayWidth,
+                  }}
                   data-testid={`slide-thumbnail-${slide.id}`}
                   data-thumbnail-mode={mode}
                 >
                   {mode === "live" ? (
                     <article
-                      className="absolute left-0 top-0 h-[1080px] w-[1920px] origin-top-left overflow-hidden bg-white text-zinc-900"
+                      className="absolute left-1/2 top-1/2 origin-top-left overflow-hidden bg-white text-zinc-900"
                       style={{
-                        transform: `scale(${thumbnailDisplayWidth / slideWidth})`,
-                        transformOrigin: "top left"
+                        transform: `scale(${thumbnailDisplayWidth / slideWidth}) translate(-50%, -50%)`,
+                        transformOrigin: "top left",
+                        width: slideWidth,
+                        height: slideHeight,
                       }}
                     >
                       <SlideRenderer slide={slide} />
@@ -378,14 +414,16 @@ export function SlideNav({
                     {titleFromMarkdown(slide.rawMarkdown)}
                   </span>
                   {slide.warnings.length > 0 ? (
-                    <em className="text-xs not-italic">{slide.warnings.length} warnings</em>
+                    <em className="text-xs not-italic">
+                      {slide.warnings.length} warnings
+                    </em>
                   ) : null}
                 </span>
               </Button>
             );
           })}
         </aside>
-      </Card>
+      </div>
 
       <div
         className="pointer-events-none fixed left-[-9999px] top-0 overflow-hidden opacity-0"
@@ -394,7 +432,10 @@ export function SlideNav({
         <div
           className="relative overflow-hidden bg-white"
           ref={captureNodeRef}
-          style={{ height: thumbnailDisplayHeight, width: thumbnailDisplayWidth }}
+          style={{
+            height: thumbnailDisplayHeight,
+            width: thumbnailDisplayWidth,
+          }}
         >
           {captureSlide ? (
             <article
@@ -403,7 +444,7 @@ export function SlideNav({
                 height: slideHeight,
                 width: slideWidth,
                 transform: `scale(${thumbnailDisplayWidth / slideWidth})`,
-                transformOrigin: "top left"
+                transformOrigin: "top left",
               }}
             >
               <SlideRenderer slide={captureSlide} />
