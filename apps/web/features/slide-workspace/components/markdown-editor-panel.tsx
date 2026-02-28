@@ -40,6 +40,11 @@ export function MarkdownEditorPanel({
 
   const slideEditors = useMemo<SlideEditorEntry[]>(() => {
     const parsed = parseDeckMarkdown(markdown);
+    const separatorSegments = markdown.includes(separator)
+      ? markdown.split(separator)
+      : null;
+    const trailingWhitespace = markdown.match(/\s+$/)?.[0] ?? "";
+
     if (parsed.slides.length === 0) {
       return [
         {
@@ -49,9 +54,21 @@ export function MarkdownEditorPanel({
       ];
     }
 
-    return parsed.slides.map((slide) => ({
+    // Preserve per-slide trailing whitespace/newlines while users edit.
+    // This works for the editor's own joined format and avoids losing Enter presses.
+    if (separatorSegments && separatorSegments.length === parsed.slides.length) {
+      return parsed.slides.map((slide, index) => ({
+        id: slide.id,
+        markdown: separatorSegments[index] ?? slide.rawMarkdown
+      }));
+    }
+
+    return parsed.slides.map((slide, index) => ({
       id: slide.id,
-      markdown: slide.rawMarkdown
+      markdown:
+        index === parsed.slides.length - 1
+          ? `${slide.rawMarkdown}${trailingWhitespace}`
+          : slide.rawMarkdown
     }));
   }, [markdown]);
   const slideStructureKey = useMemo(
