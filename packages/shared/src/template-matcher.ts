@@ -1,6 +1,6 @@
-import type { OutlineItem, TemplateId } from "@power/contracts";
+import type { CoreTemplateId, OutlineItem } from "@power/contracts";
 
-const templateCatalog: Record<TemplateId, { intents: string[]; weight: number }> = {
+const templateCatalog: Record<CoreTemplateId, { intents: string[]; weight: number }> = {
   "title-hero": { intents: ["intro", "open", "headline", "hero"], weight: 3 },
   "section-divider": { intents: ["section", "transition", "chapter"], weight: 3 },
   "bullet-list": { intents: ["list", "steps", "agenda", "overview"], weight: 2 },
@@ -12,17 +12,17 @@ const templateCatalog: Record<TemplateId, { intents: string[]; weight: number }>
 };
 
 export interface RankedTemplate {
-  templateId: TemplateId;
+  templateId: CoreTemplateId;
   score: number;
 }
 
 export interface TemplateMatchResult {
-  selected: TemplateId;
+  selected: CoreTemplateId;
   ranked: RankedTemplate[];
   usedTieBreak: boolean;
 }
 
-function scoreTemplate(item: OutlineItem, templateId: TemplateId): number {
+function scoreTemplate(item: OutlineItem, templateId: CoreTemplateId): number {
   const lowered = `${item.title} ${item.summary} ${item.intent}`.toLowerCase();
   const catalog = templateCatalog[templateId];
   const keywordHits = catalog.intents.reduce((count, keyword) => {
@@ -43,7 +43,7 @@ function scoreTemplate(item: OutlineItem, templateId: TemplateId): number {
 }
 
 export function rankTemplates(item: OutlineItem): RankedTemplate[] {
-  const ranked = (Object.keys(templateCatalog) as TemplateId[]).map((templateId) => ({
+  const ranked = (Object.keys(templateCatalog) as CoreTemplateId[]).map((templateId) => ({
     templateId,
     score: scoreTemplate(item, templateId)
   }));
@@ -53,7 +53,10 @@ export function rankTemplates(item: OutlineItem): RankedTemplate[] {
 
 export async function selectTemplate(
   item: OutlineItem,
-  tieBreak?: (candidates: TemplateId[], item: OutlineItem) => Promise<TemplateId>
+  tieBreak?: (
+    candidates: CoreTemplateId[],
+    item: OutlineItem
+  ) => Promise<CoreTemplateId>
 ): Promise<TemplateMatchResult> {
   const ranked = rankTemplates(item);
   const bestScore = ranked[0]?.score ?? 0;

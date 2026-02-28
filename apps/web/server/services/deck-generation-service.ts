@@ -1,5 +1,6 @@
 import { generateText } from "ai";
 import type {
+  CoreTemplateId,
   DeckCompletedEvent,
   DeckDocument,
   GenerateDeckRequest,
@@ -8,8 +9,7 @@ import type {
   InferredContext,
   OutlineItem,
   RuleSet,
-  SlideDocument,
-  TemplateId
+  SlideDocument
 } from "@power/contracts";
 import { parseDeckMarkdown, selectTemplate, toSlideDocuments } from "@power/shared";
 import {
@@ -344,7 +344,10 @@ async function buildOutline(prompt: string, source: string): Promise<OutlineItem
   }));
 }
 
-async function tieBreakWithModel(candidates: TemplateId[], item: OutlineItem): Promise<TemplateId> {
+async function tieBreakWithModel(
+  candidates: CoreTemplateId[],
+  item: OutlineItem
+): Promise<CoreTemplateId> {
   if (!hasOpenRouterApiKey()) {
     return candidates[0];
   }
@@ -369,8 +372,11 @@ async function tieBreakWithModel(candidates: TemplateId[], item: OutlineItem): P
 
       const parsed = extractJsonObject(result.text);
       const selected = parsed?.selected;
-      if (typeof selected === "string" && candidates.includes(selected as TemplateId)) {
-        return selected as TemplateId;
+      if (
+        typeof selected === "string" &&
+        candidates.includes(selected as CoreTemplateId)
+      ) {
+        return selected as CoreTemplateId;
       }
     } catch {
       // Try fallback.
@@ -382,7 +388,7 @@ async function tieBreakWithModel(candidates: TemplateId[], item: OutlineItem): P
 
 function composeSlideMarkdown(
   item: OutlineItem,
-  layout: TemplateId,
+  layout: CoreTemplateId,
   context: InferredContext,
   ruleset: RuleSet
 ): string {
@@ -603,7 +609,7 @@ export async function* generateDeckEvents(
     yield taskCompleted("build_outline", `Outline contains ${outline.length} items.`);
 
     yield taskStarted("match_templates", "Matching outline items to templates.");
-    const templateSelections: TemplateId[] = [];
+    const templateSelections: CoreTemplateId[] = [];
     for (const item of outline) {
       const match = await selectTemplate(item, tieBreakWithModel);
       templateSelections.push(match.selected);

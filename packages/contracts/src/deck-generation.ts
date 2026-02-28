@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const templateIdValues = [
+export const coreTemplateIdValues = [
   "title-hero",
   "section-divider",
   "bullet-list",
@@ -11,7 +11,14 @@ export const templateIdValues = [
   "metric-highlight"
 ] as const;
 
-export type TemplateId = (typeof templateIdValues)[number];
+export type CoreTemplateId = (typeof coreTemplateIdValues)[number];
+export type SlideLayoutId = CoreTemplateId | (string & {});
+export const templateIdValues = coreTemplateIdValues;
+export type TemplateId = CoreTemplateId;
+
+export function isCoreTemplateId(value: string): value is CoreTemplateId {
+  return (coreTemplateIdValues as readonly string[]).includes(value);
+}
 
 export const generationTaskIdValues = [
   "ingest_input",
@@ -63,7 +70,7 @@ export interface RuleSet {
 
 export interface SlideDocument {
   id: string;
-  layout: TemplateId;
+  layout: SlideLayoutId;
   rawMarkdown: string;
   containers: SlideContainer[];
   warnings: string[];
@@ -129,7 +136,7 @@ const slideContainerSchema = z.object({
 
 export const slideDocumentSchema = z.object({
   id: z.string().min(1),
-  layout: z.enum(templateIdValues),
+  layout: z.string().min(1),
   rawMarkdown: z.string(),
   containers: z.array(slideContainerSchema),
   warnings: z.array(z.string())

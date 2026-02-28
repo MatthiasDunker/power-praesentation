@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Power Praesentation",
+  title: "Markdown2Slides - Chat-first markdown to slide generation",
   description: "Chat-first markdown to slide generation",
 };
 

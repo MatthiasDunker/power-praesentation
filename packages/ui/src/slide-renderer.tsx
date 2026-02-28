@@ -1,125 +1,63 @@
-import type { SlideDocument } from "@power/contracts";
-import { BasicMarkdown } from "./basic-markdown";
+import type { SlideDocument, SlideLayoutId } from "@power/contracts";
+import { createSlideAstInputFromDocument } from "@power/slide-templates";
+import {
+  createCoreTemplateModuleRegistry,
+  type SlideTemplateModule,
+  type SlideTemplateModuleRegistry
+} from "@power/slide-templates/ui";
 
-interface SlideRendererProps {
+export interface SlideRendererProps {
   slide: SlideDocument;
+  registry?: SlideTemplateModuleRegistry;
 }
 
-function stripFrontmatter(markdown: string): string {
-  if (!markdown.startsWith("---\n")) {
-    return markdown;
+const fallbackLayout: SlideLayoutId = "bullet-list";
+const unknownLayoutWarnings = new Set<string>();
+
+export function createSlideRendererRegistry(
+  extensions: ReadonlyArray<SlideTemplateModule<unknown>> = []
+): SlideTemplateModuleRegistry {
+  return createCoreTemplateModuleRegistry(extensions);
+}
+
+const defaultRegistry = createSlideRendererRegistry();
+
+function resolveTemplate(
+  layout: SlideLayoutId,
+  registry: SlideTemplateModuleRegistry
+): SlideTemplateModule<unknown> | null {
+  const exact = registry[layout];
+  if (exact) {
+    return exact;
   }
 
-  const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
-  const endIndex = lines.slice(1).findIndex((line) => line.trim() === "---");
-  if (endIndex === -1) {
-    return markdown;
+  if (!unknownLayoutWarnings.has(layout)) {
+    unknownLayoutWarnings.add(layout);
+    console.warn(
+      `[SlideRenderer] Unknown layout '${layout}'. Falling back to '${fallbackLayout}'.`
+    );
   }
 
-  return lines
-    .slice(endIndex + 2)
-    .join("\n")
-    .trim();
+  return registry[fallbackLayout] ?? null;
 }
 
-function baseContent(slide: SlideDocument): string {
-  return stripFrontmatter(slide.rawMarkdown);
-}
+export function SlideRenderer({ slide, registry = defaultRegistry }: SlideRendererProps) {
+  const template = resolveTemplate(slide.layout, registry);
 
-function templateTextClassName() {
-  return "h-full w-full p-16 text-zinc-900 [&_h1]:mb-6 [&_h1]:text-[72px] [&_h1]:leading-tight [&_h2]:mb-4 [&_h2]:text-[48px] [&_h2]:leading-tight [&_p]:text-[32px] [&_p]:leading-snug [&_ul]:pl-10 [&_li]:text-[30px] [&_li]:leading-snug";
-}
+  if (!template) {
+    return null;
+  }
 
-function renderTwoColumn(slide: SlideDocument) {
-  const columns = slide.containers.filter(
-    (container) => container.kind === "column",
-  );
-  const left = columns[0]?.markdown ?? "";
-  const right = columns[1]?.markdown ?? "";
+  const astInput = createSlideAstInputFromDocument(slide);
+  const decodeResult = template.decode(astInput);
 
   return (
-    <div className="grid h-full grid-cols-2 gap-6">
-      <div className="rounded-md border border-zinc-200 bg-zinc-50 p-6">
-        <BasicMarkdown markdown={left} />
-      </div>
-      <div className="rounded-md border border-zinc-200 bg-zinc-50 p-6">
-        <BasicMarkdown markdown={right} />
-      </div>
-    </div>
+    <section
+      className={template.rootClassName}
+      data-power-slide-layout={slide.layout}
+      data-power-slide-root
+    >
+      {template.render(decodeResult.props)}
+    </section>
   );
-}
-
-export function SlideRenderer({ slide }: SlideRendererProps) {
-  const content = baseContent(slide);
-  const baseTemplateClass = templateTextClassName();
-
-  switch (slide.layout) {
-    case "title-hero":
-      return (
-        <section
-          className={`${baseTemplateClass} flex flex-col justify-center`}
-        >
-          <BasicMarkdown markdown={content} />
-        </section>
-      );
-    case "section-divider":
-      return (
-        <section
-          className={`${baseTemplateClass} grid place-content-center text-center`}
-        >
-          <BasicMarkdown markdown={content} />
-        </section>
-      );
-    case "two-column":
-      return (
-        <section className={baseTemplateClass}>
-          {renderTwoColumn(slide)}
-        </section>
-      );
-    case "quote-focus":
-      return (
-        <section
-          className={`${baseTemplateClass} [&_p]:text-[44px] [&_p]:italic`}
-        >
-          <BasicMarkdown markdown={content} />
-        </section>
-      );
-    case "image-left-copy":
-      return (
-        <section
-          className={`${baseTemplateClass} grid grid-cols-[44%_56%] gap-6`}
-        >
-          <div className="rounded-md border border-zinc-200 bg-zinc-100" />
-          <div className="self-center">
-            <BasicMarkdown markdown={content} />
-          </div>
-        </section>
-      );
-    case "image-right-copy":
-      return (
-        <section
-          className={`${baseTemplateClass} grid grid-cols-[56%_44%] gap-6`}
-        >
-          <div className="self-center">
-            <BasicMarkdown markdown={content} />
-          </div>
-          <div className="rounded-md border border-zinc-200 bg-zinc-100" />
-        </section>
-      );
-    case "metric-highlight":
-      return (
-        <section
-          className={`${baseTemplateClass} [&_h2]:text-[62px] [&_li]:text-[36px]`}
-        >
-          <BasicMarkdown markdown={content} />
-        </section>
-      );
-    case "bullet-list":
-    default:
-      return (
-        <section className={baseTemplateClass}>
-          <BasicMarkdown markdown={content} />
-        </section>
-      );
-  }
 }

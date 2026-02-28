@@ -12,6 +12,7 @@ import type {
   SlideDocument,
 } from "@power/contracts";
 import { parseDeckMarkdown, toSlideDocuments } from "@power/shared";
+import { SlideRuntimeStyleSheet } from "@power/ui";
 import {
   ChatGenerationConversation,
   type ConversationUserMessage,
@@ -227,6 +228,12 @@ export function SlideWorkspaceShell() {
 
     return previewSlides;
   }, [phase, deck, previewSlides]);
+  const templateSignature = useMemo(() => {
+    const layouts = Array.from(
+      new Set(displaySlides.map((slide) => slide.layout))
+    ).sort();
+    return layouts.join("|");
+  }, [displaySlides]);
 
   const submitPrompt = async (payload: GenerateDeckRequest) => {
     setUserMessage({
@@ -335,6 +342,7 @@ export function SlideWorkspaceShell() {
 
   return (
     <main className="min-h-screen text-zinc-900">
+      <SlideRuntimeStyleSheet templateSignature={templateSignature} />
       <section
         className={cn(
           "grid gap-4 print:hidden",

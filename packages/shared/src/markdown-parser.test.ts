@@ -41,4 +41,31 @@ describe("parseDeckMarkdown", () => {
     expect(parsed.slides[0].layout).toBe("title-hero");
     expect(parsed.slides[0].title).toBe("Intro");
   });
+
+  it("warns when nested fenced containers are used", () => {
+    const parsed = parseDeckMarkdown(
+      `---\nlayout: two-column\n---\n::: column\nOuter\n::: column\nInner\n:::\n:::`
+    );
+
+    expect(parsed.slides[0].warnings.join(" ")).toContain(
+      "Nested fenced containers are not supported in v1."
+    );
+  });
+
+  it("warns when closing fenced container has no opening tag", () => {
+    const parsed = parseDeckMarkdown(`---\nlayout: bullet-list\n---\n# Intro\n\n:::`);
+
+    expect(parsed.slides[0].warnings.join(" ")).toContain(
+      "Found closing fenced container without opening tag."
+    );
+  });
+
+  it("parses commonmark content without failing", () => {
+    const parsed = parseDeckMarkdown(
+      `---\nlayout: bullet-list\n---\n# Intro\n\n1. First\n2. Second\n\n> Quote\n\n\`\`\`ts\nconsole.log('x')\n\`\`\``
+    );
+
+    expect(parsed.slides[0].warnings).toHaveLength(0);
+    expect(parsed.slides[0].title).toBe("Intro");
+  });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generationStreamEventSchema } from "./deck-generation";
+import { generationStreamEventSchema, slideDocumentSchema } from "./deck-generation";
 
 describe("generation stream event schema", () => {
   it("accepts task events", () => {
@@ -61,5 +61,17 @@ describe("generation stream event schema", () => {
     });
 
     expect(parsed.success).toBe(false);
+  });
+
+  it("accepts custom layout ids for plugin templates", () => {
+    const parsed = slideDocumentSchema.safeParse({
+      id: "slide-1",
+      layout: "custom/experimental-layout",
+      rawMarkdown: "# Hello",
+      containers: [],
+      warnings: []
+    });
+
+    expect(parsed.success).toBe(true);
   });
 });

@@ -1,0 +1,291 @@
+import { PresetMatricssOptions } from "@matricss/unocss-preset";
+
+export function createConfig(): PresetMatricssOptions["config"] {
+  return {
+    modifiers: [
+      {
+        name: "size",
+        variants: ["small", "medium", "large"],
+        default: "medium",
+      },
+      // {
+      //   // TODO: how to combine this with theem for example
+      //   name: "lightmode",
+      //   variants: ["light", "dark"],
+      //   // TODO: do we need "light" as a class then? we could have just dark as a addon
+      //   // TODO: how do we cope with systempreference?
+      //   default: "light",
+      // },
+      {
+        name: "theme",
+        variants: [
+          "default",
+          "subtle",
+          "dark",
+          "viessmann",
+          "beresa",
+          "oecd",
+          "tresffic",
+          "conversational-architecture",
+          "maile",
+          "casavi",
+          "relay",
+          "esforin",
+          // "primary",
+          // "primary-container",
+          // "interaction-main",
+          // "secondary",
+          // "secondary-container",
+          // "danger",
+          // "danger-container",
+          // "surface-container",
+          // "default-container",
+        ],
+        default: "default",
+      },
+    ],
+    consumers: [
+      {
+        name: "typo",
+        variants: ["display", "headline", "body", "overline" /* "label" */],
+        default: "body",
+      },
+      {
+        name: "tint",
+        variants: [
+          "full",
+          "display",
+          "headline",
+          "text",
+          "subtle",
+          "accent",
+          "highlight",
+          "divider",
+          "outline",
+        ],
+        default: "full",
+      },
+    ],
+    integrations: [
+      {
+        modifier: "size",
+        consumer: "typo",
+        asComposite: true,
+        propertyMap: [
+          ["f", "font"],
+          ["ls", "letter-spacing"],
+
+          // example:
+          // ["border-width"],
+          // ["outline-width", "border-width"],
+          // ["outline-width", ["border-width", "border-radius"]],
+        ],
+        values: {
+          small: {
+            display: {
+              f: "400 96px/112px var(--font-display)",
+              ls: "0.02em",
+            },
+            headline: {
+              f: "400 10px/16px var(--font-display)",
+              ls: "0.02em",
+            },
+            body: {
+              f: "400 15px/24px var(--font-main)",
+              ls: "0.015em",
+            },
+            overline: {
+              f: "400 20px/32px var(--font-main)",
+              ls: "0.02em",
+            },
+          },
+          medium: {
+            display: {
+              f: "400 96px/112px var(--font-display)",
+              ls: "0.02em",
+            },
+            headline: {
+              f: "400 10px/16px var(--font-display)",
+              ls: "0.02em",
+            },
+            body: {
+              f: "400 18.5px/32px var(--font-main)",
+              ls: "0.015em",
+            },
+            overline: {
+              f: "400 20px/32px var(--font-main)",
+              ls: "0.02em",
+            },
+          },
+          large: {
+            display: {
+              f: "400 112px/144px var(--font-display)",
+              ls: "0.02em",
+            },
+            headline: {
+              f: "400 100px/112px var(--font-display)",
+              ls: "0.02em",
+            },
+            body: {
+              f: "400 28px/40px var(--font-main)",
+              ls: "0.015em",
+            },
+            overline: {
+              f: "400 64px/80px var(--font-display)",
+              ls: "0.02em",
+            },
+          },
+        },
+      },
+      {
+        modifier: "theme", // TODO: multiple modifiers ["lightmode", "theme"],
+        consumer: "tint",
+        propertyMap: [
+          ["bgc", "background-color"],
+          ["c", "color"],
+          ["bdc", "border-color"],
+
+          // example:
+          // ["border-width"],
+          // ["outline-width", "border-width"],
+          // ["outline-width", ["border-width", "border-radius"]], // TODO: cope with this later
+        ],
+        values: {
+          // TODO: vs
+          default: {
+            full: "#fff",
+            display: "#220F0F", // "#058eff",
+            headline: "#220F0F",
+            text: "#220F0F",
+            subtle: "#4c3c3c",
+            accent: "#33FF9D",
+            highlight: "#33FF9D",
+            divider: "#dfe3d9",
+            outline: "#bec3b7",
+          },
+          subtle: {
+            full: "#B0D9C7",
+            display: "#053333", // "#058eff",
+            headline: "#053333",
+            text: "#053333",
+            subtle: "#4c3c3c",
+            accent: "#33FF9D",
+            highlight: "#33FF9D",
+            divider: "#dfe3d9",
+            outline: "#bec3b7",
+          },
+          dark: {
+            full: "#053333", //"#00331A",
+            display: "#ffffff",
+            headline: "#ffffff",
+            text: "#ffffff",
+            subtle: "#afcebd",
+            accent: "#ffffff",
+            highlight: "#f5ffe5",
+            divider: "#000",
+            outline: "#000",
+          },
+          viessmann: {
+            full: "#EE2D24",
+            display: "#ffffff", // "#058eff",
+            headline: "#ffffff",
+            text: "#ffffff",
+            subtle: "#fcd9d7",
+            accent: "#000000",
+            highlight: "#8F1B16",
+            divider: "#F5817C",
+            outline: "#ffffff",
+          },
+          tresffic: {
+            full: "#d9fd8b",
+            display: "#072140", // "#058eff",
+            headline: "#072140",
+            text: "#072140",
+            subtle: "#203e62",
+            accent: "#000000",
+            highlight: "#8F1B16",
+            divider: "#F5817C",
+            outline: "#ffffff",
+          },
+          "conversational-architecture": {
+            full: "#F3EFE7",
+            display: "#333333", // "#058eff",
+            headline: "#333333",
+            text: "#333333",
+            subtle: "#606060",
+            accent: "#000000",
+            highlight: "#8F1B16",
+            divider: "#F5817C",
+            outline: "#ffffff",
+          },
+          oecd: {
+            full: "#EFF4F9",
+            display: "#1D2E42", // "#058eff",
+            headline: "#1D2E42",
+            text: "#1D2E42",
+            subtle: "#4a5b70",
+            accent: "#000000",
+            highlight: "#8F1B16",
+            divider: "#F5817C",
+            outline: "#F9B000",
+          },
+          beresa: {
+            full: "#262626",
+            display: "#F9B000", // "#058eff",
+            headline: "#F9B000",
+            text: "#F9B000",
+            subtle: "#d4b66f",
+            accent: "#000000",
+            highlight: "#8F1B16",
+            divider: "#F5817C",
+            outline: "#F9B000",
+          },
+          casavi: {
+            full: "#3c5064",
+            display: "#ffffff", // "#058eff",
+            headline: "#ffffff",
+            text: "#ffffff",
+            subtle: "#dcdfe3",
+            accent: "#000000",
+            highlight: "#8F1B16",
+            divider: "#F5817C",
+            outline: "#ffffff",
+          },
+          relay: {
+            full: "#f8454c",
+            display: "#ffffff", // "#058eff",
+            headline: "#ffffff",
+            text: "#ffffff",
+            subtle: "#feebeb",
+            accent: "#000000",
+            highlight: "#8F1B16",
+            divider: "#F5817C",
+            outline: "#ffffff",
+          },
+          maile: {
+            full: "#C6D3E2",
+            display: "#1F2F43", // "#058eff",
+            headline: "#1F2F43",
+            text: "#1F2F43",
+            subtle: "#303F53",
+            accent: "#000000",
+            highlight: "#8F1B16",
+            divider: "#F5817C",
+            outline: "#1F2F43",
+          },
+          esforin: {
+            full: "#1a2950",
+            display: "#ffffff", // "#058eff",
+            headline: "#ffffff",
+            text: "#ffffff",
+            subtle: "#7dfff5",
+            accent: "#000000",
+            highlight: "#8F1B16",
+            divider: "#F5817C",
+            outline: "#ffffff",
+          },
+        },
+      },
+    ],
+  };
+}

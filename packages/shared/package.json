@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@power/contracts": "workspace:*"
+    "@power/contracts": "workspace:*",
+    "@power/slide-templates": "workspace:*"
   }
 }

@@ -17,6 +17,12 @@
       "@power/shared": [
         "../../packages/shared/src/index.ts"
       ],
+      "@power/slide-templates": [
+        "../../packages/slide-templates/src/index.ts"
+      ],
+      "@power/slide-templates/ui": [
+        "../../packages/slide-templates/src/ui.ts"
+      ],
       "@power/ui": [
         "../../packages/ui/src/index.ts"
       ]
