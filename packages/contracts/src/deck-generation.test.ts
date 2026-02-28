@@ -89,4 +89,21 @@ describe("generation stream event schema", () => {
 
     expect(parsed.success).toBe(true);
   });
+
+  it("accepts optional resolved partials on slide documents", () => {
+    const parsed = slideDocumentSchema.safeParse({
+      id: "slide-1",
+      layout: "title-hero",
+      rawMarkdown: "# Hello",
+      resolvedPartials: {
+        footer: {
+          cols: ["2026-02-28", "", "{{page}}/{{totalPages}}"]
+        }
+      },
+      containers: [],
+      warnings: []
+    });
+
+    expect(parsed.success).toBe(true);
+  });
 });

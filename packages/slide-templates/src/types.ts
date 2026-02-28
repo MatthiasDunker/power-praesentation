@@ -18,6 +18,7 @@ export interface SlideAstContainerNode {
 export interface SlideAstInput {
   layout: SlideLayoutId;
   frontmatter: Record<string, string>;
+  frontmatterData: Record<string, unknown>;
   bodyMarkdown: string;
   contentMarkdown: string;
   ast: MarkdownAstRoot;

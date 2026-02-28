@@ -8,6 +8,7 @@ interface SlideAstInputFromMarkdownOptions {
   layout: SlideLayoutId;
   markdown: string;
   frontmatter?: Record<string, string>;
+  frontmatterData?: Record<string, unknown>;
 }
 
 export interface SlideAstInputFromMarkdownResult {
@@ -18,12 +19,17 @@ export interface SlideAstInputFromMarkdownResult {
 export function createSlideAstInputFromMarkdown({
   layout,
   markdown,
-  frontmatter = {}
+  frontmatter = {},
+  frontmatterData = {}
 }: SlideAstInputFromMarkdownOptions): SlideAstInputFromMarkdownResult {
   const parsedFrontmatter = parseFrontmatter(markdown);
   const mergedFrontmatter = {
     ...parsedFrontmatter.frontmatter,
     ...frontmatter
+  };
+  const mergedFrontmatterData = {
+    ...parsedFrontmatter.frontmatterData,
+    ...frontmatterData
   };
   const containerParse = parseFencedContainers(parsedFrontmatter.bodyMarkdown);
 
@@ -31,6 +37,7 @@ export function createSlideAstInputFromMarkdown({
     input: {
       layout,
       frontmatter: mergedFrontmatter,
+      frontmatterData: mergedFrontmatterData,
       bodyMarkdown: parsedFrontmatter.bodyMarkdown,
       contentMarkdown: containerParse.contentMarkdown,
       ast: parseMarkdownAst(containerParse.contentMarkdown),

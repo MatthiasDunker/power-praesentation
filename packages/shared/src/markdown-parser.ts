@@ -4,6 +4,7 @@ import {
   createSlideAstInputFromMarkdown,
   parseFooterDirective,
   parseFrontmatter,
+  stringifyFrontmatter,
   toLines,
   type SlideAstContainerNode,
   type SlideTemplateRegistry
@@ -16,7 +17,9 @@ export interface ParsedSlide {
   bodyMarkdown: string;
   title: string;
   frontmatter: Record<string, string>;
+  frontmatterData: Record<string, unknown>;
   resolvedFrontmatter: Record<string, string>;
+  resolvedPartials: Record<string, unknown>;
   containers: Array<{ kind: string; markdown: string }>;
   warnings: string[];
 }
@@ -157,21 +160,14 @@ function normalizeContainersForTemplate(
 }
 
 function normalizeSlideMarkdown(slide: ParsedSlide): string {
-  const frontmatterEntries = Object.entries(slide.frontmatter).filter(
-    ([key]) => key !== "layout",
-  );
-  const frontmatterLines = [
-    `layout: ${slide.layout}`,
-    ...frontmatterEntries.map(([key, value]) => `${key}: ${value}`),
-  ];
-  return `---\n${frontmatterLines.join("\n")}\n---\n${slide.bodyMarkdown}`.trim();
+  return `---\n${stringifyFrontmatter(slide.frontmatterData, slide.layout)}\n---\n${slide.bodyMarkdown}`.trim();
 }
 
 function resolveFooterForSlide(
   index: number,
-  explicitFooter: string | undefined,
-  deckDefaultFooter: string | undefined
-): string | undefined {
+  explicitFooter: unknown,
+  deckDefaultFooter: unknown
+): unknown {
   const directive = parseFooterDirective(explicitFooter);
 
   if (index === 0) {
@@ -187,6 +183,25 @@ function resolveFooterForSlide(
   }
 
   return deckDefaultFooter;
+}
+
+function clonePartialValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => clonePartialValue(entry));
+  }
+
+  if (value && typeof value === "object") {
+    const source = value as Record<string, unknown>;
+    const next: Record<string, unknown> = {};
+
+    for (const [key, entry] of Object.entries(source)) {
+      next[key] = clonePartialValue(entry);
+    }
+
+    return next;
+  }
+
+  return value;
 }
 
 export function parseDeckMarkdown(
@@ -211,7 +226,7 @@ export function parseDeckMarkdown(
     parsedFrontmatter: parseFrontmatter(segment)
   }));
   const firstSlideFooter = parseFooterDirective(
-    parsedSegments[0]?.parsedFrontmatter.frontmatter.footer
+    parsedSegments[0]?.parsedFrontmatter.frontmatterData.footer
   );
   const deckDefaultFooter =
     firstSlideFooter.type === "value" ? firstSlideFooter.value : undefined;
@@ -222,15 +237,21 @@ export function parseDeckMarkdown(
       typeof frontmatterLayout === "string" && frontmatterLayout.length > 0
         ? frontmatterLayout
         : defaultLayout;
+    const frontmatterData = parsedFrontmatter.frontmatterData;
     const resolvedFrontmatter = {
       ...parsedFrontmatter.frontmatter
     };
+    const resolvedPartials: Record<string, unknown> = {};
     const resolvedFooter = resolveFooterForSlide(
       index,
-      parsedFrontmatter.frontmatter.footer,
+      frontmatterData.footer,
       deckDefaultFooter
     );
-    if (resolvedFooter) {
+    if (typeof resolvedFooter !== "undefined") {
+      resolvedPartials.footer = clonePartialValue(resolvedFooter);
+    }
+
+    if (typeof resolvedFooter === "string") {
       resolvedFrontmatter.footer = resolvedFooter;
     } else {
       delete resolvedFrontmatter.footer;
@@ -239,7 +260,8 @@ export function parseDeckMarkdown(
     const astInputResult = createSlideAstInputFromMarkdown({
       layout,
       markdown: parsedFrontmatter.bodyMarkdown,
-      frontmatter: parsedFrontmatter.frontmatter
+      frontmatter: parsedFrontmatter.frontmatter,
+      frontmatterData: parsedFrontmatter.frontmatterData
     });
 
     const registryEntry = templateRegistry[layout];
@@ -269,7 +291,9 @@ export function parseDeckMarkdown(
       bodyMarkdown: parsedFrontmatter.bodyMarkdown,
       title: extractTitle(astInputResult.input.contentMarkdown),
       frontmatter: parsedFrontmatter.frontmatter,
+      frontmatterData,
       resolvedFrontmatter,
+      resolvedPartials,
       containers: normalizeContainersForTemplate(
         astInputResult.input.containers,
         registryEntry
@@ -295,6 +319,7 @@ export function toSlideDocuments(parsedDeck: ParsedDeck): SlideDocument[] {
     layout: slide.layout,
     rawMarkdown: slide.rawMarkdown,
     resolvedFrontmatter: slide.resolvedFrontmatter,
+    resolvedPartials: slide.resolvedPartials,
     containers: slide.containers,
     warnings: slide.warnings
   }));

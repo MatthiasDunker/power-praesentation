@@ -1,17 +1,29 @@
 import type { SlideTemplateSlots } from "../ui-types";
 import { FooterPartial } from "./footer";
-import { resolveFooterValue } from "./footer-value";
+import {
+  type FooterRuntimeContext,
+  resolveFooterPayload
+} from "./footer-value";
+
+export interface ResolveTemplateSlotsInput {
+  frontmatter?: Record<string, string>;
+  partials?: Record<string, unknown>;
+}
 
 export function resolveTemplateSlots(
-  frontmatter: Record<string, string>
+  { frontmatter = {}, partials = {} }: ResolveTemplateSlotsInput,
+  context: FooterRuntimeContext = {}
 ): SlideTemplateSlots {
-  const footer = resolveFooterValue(frontmatter.footer);
+  const footerSource = Object.prototype.hasOwnProperty.call(partials, "footer")
+    ? partials.footer
+    : frontmatter.footer;
+  const footer = resolveFooterPayload(footerSource, context);
 
-  if (!footer) {
+  if (typeof footer === "undefined") {
     return {};
   }
 
   return {
-    footer: <FooterPartial text={footer} />
+    footer: <FooterPartial value={footer} />
   };
 }

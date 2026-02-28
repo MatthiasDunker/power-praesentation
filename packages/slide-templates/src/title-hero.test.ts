@@ -6,6 +6,7 @@ describe("title-hero decoder", () => {
     const result = decodeTitleHero({
       layout: "title-hero",
       frontmatter: {},
+      frontmatterData: {},
       bodyMarkdown: "",
       contentMarkdown: "## Q4 Review\n# Product Direction\nA concise direction statement.",
       ast: { type: "root", children: [] },
@@ -27,6 +28,7 @@ describe("title-hero decoder", () => {
         title: "Frontmatter title",
         description: "Frontmatter description"
       },
+      frontmatterData: {},
       bodyMarkdown: "",
       contentMarkdown: "# Markdown title\nMarkdown body",
       ast: { type: "root", children: [] },

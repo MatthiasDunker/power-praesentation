@@ -74,7 +74,7 @@ theme: theme-esforin
   });
 
   it("passes footer slot from resolved frontmatter", () => {
-    let capturedFooter: ReactElement<{ text: string }> | undefined;
+    let capturedFooter: ReactElement<{ value: unknown }> | undefined;
 
     const registry = createSlideRendererRegistry([
       {
@@ -83,7 +83,7 @@ theme: theme-esforin
         decode: () => ({ props: {}, warnings: [] }),
         rootClassName: "override",
         render: (_props, slots) => {
-          capturedFooter = slots?.footer as ReactElement<{ text: string }> | undefined;
+          capturedFooter = slots?.footer as ReactElement<{ value: unknown }> | undefined;
           return null;
         }
       }
@@ -100,6 +100,9 @@ layout: title-hero
         layout: "title-hero",
         footer: "Acme 2026"
       },
+      resolvedPartials: {
+        footer: "Acme 2026"
+      },
       containers: [],
       warnings: []
     };
@@ -108,11 +111,11 @@ layout: title-hero
 
     expect(capturedFooter).toBeTruthy();
     expect(capturedFooter?.type).toBe(FooterPartial);
-    expect(capturedFooter?.props.text).toBe("Acme 2026");
+    expect(capturedFooter?.props.value).toBe("Acme 2026");
   });
 
   it("does not pass footer slot when footer is disabled", () => {
-    let capturedFooter: ReactElement<{ text: string }> | undefined;
+    let capturedFooter: ReactElement<{ value: unknown }> | undefined;
 
     const registry = createSlideRendererRegistry([
       {
@@ -121,7 +124,7 @@ layout: title-hero
         decode: () => ({ props: {}, warnings: [] }),
         rootClassName: "override",
         render: (_props, slots) => {
-          capturedFooter = slots?.footer as ReactElement<{ text: string }> | undefined;
+          capturedFooter = slots?.footer as ReactElement<{ value: unknown }> | undefined;
           return null;
         }
       }
@@ -142,5 +145,46 @@ footer: off
     SlideRenderer({ slide, registry });
 
     expect(capturedFooter).toBeUndefined();
+  });
+
+  it("resolves page tokens in structured footer props", () => {
+    let capturedFooter: ReactElement<{ value: unknown }> | undefined;
+
+    const registry = createSlideRendererRegistry([
+      {
+        id: "title-hero",
+        containerRules: [],
+        decode: () => ({ props: {}, warnings: [] }),
+        rootClassName: "override",
+        render: (_props, slots) => {
+          capturedFooter = slots?.footer as ReactElement<{ value: unknown }> | undefined;
+          return null;
+        }
+      }
+    ]);
+
+    const slide: SlideDocument = {
+      id: "slide-1",
+      layout: "title-hero",
+      rawMarkdown: `---
+layout: title-hero
+---
+# Hello`,
+      resolvedPartials: {
+        footer: {
+          cols: ["2026-02-28", "", "{{page}}/{{totalPages}}"]
+        }
+      },
+      containers: [],
+      warnings: []
+    };
+
+    SlideRenderer({ slide, registry, slideNumber: 2, slideCount: 7 });
+
+    expect(capturedFooter).toBeTruthy();
+    expect(capturedFooter?.type).toBe(FooterPartial);
+    expect(capturedFooter?.props.value).toEqual({
+      cols: ["2026-02-28", "", "2/7"]
+    });
   });
 });

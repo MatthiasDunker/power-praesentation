@@ -76,15 +76,37 @@ export function SlideCanvas({ slides, activeSlideId }: SlideCanvasProps) {
     };
   }, []);
 
-  const activeSlide = useMemo(() => {
+  const activeSlideEntry = useMemo(() => {
+    if (slides.length === 0) {
+      return null;
+    }
+
     if (!activeSlideId) {
-      return slides[0] ?? null;
+      return {
+        index: 0,
+        slide: slides[0]
+      };
+    }
+
+    const index = slides.findIndex((slide) => slide.id === activeSlideId);
+
+    if (index >= 0) {
+      return {
+        index,
+        slide: slides[index]
+      };
     }
 
     return (
-      slides.find((slide) => slide.id === activeSlideId) ?? slides[0] ?? null
+      slides[0]
+        ? {
+            index: 0,
+            slide: slides[0]
+          }
+        : null
     );
   }, [activeSlideId, slides]);
+  const activeSlide = activeSlideEntry?.slide ?? null;
 
   if (!activeSlide) {
     return (
@@ -130,20 +152,28 @@ export function SlideCanvas({ slides, activeSlideId }: SlideCanvasProps) {
               data-testid="live-slide-page"
               style={liveStyle}
             >
-              <SlideRenderer slide={activeSlide} />
+              <SlideRenderer
+                slide={activeSlide}
+                slideNumber={activeSlideEntry ? activeSlideEntry.index + 1 : undefined}
+                slideCount={slides.length}
+              />
             </article>
           </div>
         </div>
       </div>
 
       <div className="hidden print:block" data-testid="print-pages">
-        {slides.map((slide) => (
+        {slides.map((slide, index) => (
           <article
             className="h-[1080px] w-[1920px] overflow-hidden bg-white"
             key={`print-${slide.id}`}
             style={printStyle}
           >
-            <SlideRenderer slide={slide} />
+            <SlideRenderer
+              slide={slide}
+              slideNumber={index + 1}
+              slideCount={slides.length}
+            />
           </article>
         ))}
       </div>

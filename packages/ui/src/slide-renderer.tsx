@@ -10,6 +10,8 @@ import {
 export interface SlideRendererProps {
   slide: SlideDocument;
   registry?: SlideTemplateModuleRegistry;
+  slideNumber?: number;
+  slideCount?: number;
 }
 
 const fallbackLayout: SlideLayoutId = "bullet-list";
@@ -55,7 +57,12 @@ function resolveTemplate(
   return registry[fallbackLayout] ?? null;
 }
 
-export function SlideRenderer({ slide, registry = defaultRegistry }: SlideRendererProps) {
+export function SlideRenderer({
+  slide,
+  registry = defaultRegistry,
+  slideNumber,
+  slideCount
+}: SlideRendererProps) {
   const template = resolveTemplate(slide.layout, registry);
 
   if (!template) {
@@ -64,7 +71,16 @@ export function SlideRenderer({ slide, registry = defaultRegistry }: SlideRender
 
   const astInput = createSlideAstInputFromDocument(slide);
   const decodeResult = template.decode(astInput);
-  const slots = resolveTemplateSlots(astInput.frontmatter);
+  const slots = resolveTemplateSlots(
+    {
+      frontmatter: astInput.frontmatter,
+      partials: slide.resolvedPartials
+    },
+    {
+      slideNumber,
+      slideCount
+    }
+  );
   const themeClassName = normalizeThemeClassName(astInput.frontmatter.theme);
   const sectionClassName = [template.rootClassName, themeClassName]
     .filter((value) => typeof value === "string" && value.length > 0)

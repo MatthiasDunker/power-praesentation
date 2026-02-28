@@ -9,6 +9,7 @@ describe("two-column decoder", () => {
     const result = decode?.({
       layout: "two-column",
       frontmatter: {},
+      frontmatterData: {},
       bodyMarkdown: "",
       contentMarkdown: "",
       ast: { type: "root", children: [] },
@@ -25,6 +26,7 @@ describe("two-column decoder", () => {
     const result = decode?.({
       layout: "two-column",
       frontmatter: {},
+      frontmatterData: {},
       bodyMarkdown: "",
       contentMarkdown: "",
       ast: { type: "root", children: [] },

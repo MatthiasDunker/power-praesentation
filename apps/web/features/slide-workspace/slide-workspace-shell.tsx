@@ -11,7 +11,7 @@ import type {
   RuleSet,
   SlideDocument,
 } from "@power/contracts";
-import { parseDeckMarkdown, toSlideDocuments } from "@power/shared";
+import { parseDeckMarkdown, parseFrontmatter, toSlideDocuments } from "@power/shared";
 import { SlideRuntimeStyleSheet } from "@power/ui";
 import {
   ChatGenerationConversation,
@@ -64,51 +64,35 @@ function updateTask(
   );
 }
 
-function parseFrontmatterFromRawSlideMarkdown(
-  rawMarkdown: string,
-): Record<string, string> {
-  const normalized = rawMarkdown.replace(/\r\n?/g, "\n").trimStart();
-
-  if (!normalized.startsWith("---\n")) {
-    return {};
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableSerialize(entry)).join(",")}]`;
   }
 
-  const endIndex = normalized.indexOf("\n---\n", 4);
-  if (endIndex < 0) {
-    return {};
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const sortedKeys = Object.keys(record).sort();
+    return `{${sortedKeys
+      .map((key) => `${JSON.stringify(key)}:${stableSerialize(record[key])}`)
+      .join(",")}}`;
   }
 
-  const block = normalized.slice(4, endIndex);
-  const frontmatter: Record<string, string> = {};
-
-  for (const line of block.split("\n")) {
-    const delimiterIndex = line.indexOf(":");
-    if (delimiterIndex <= 0) {
-      continue;
-    }
-
-    const key = line.slice(0, delimiterIndex).trim();
-    const value = line.slice(delimiterIndex + 1).trim();
-
-    if (key.length === 0) {
-      continue;
-    }
-
-    frontmatter[key] = value;
-  }
-
-  return frontmatter;
+  return JSON.stringify(value);
 }
 
 function toFrontmatterStyleSignature(rawMarkdown: string): string {
-  const frontmatter = parseFrontmatterFromRawSlideMarkdown(rawMarkdown);
-  const keys = Object.keys(frontmatter).sort();
-
+  const parsed = parseFrontmatter(rawMarkdown.trimStart());
+  const keys = Object.keys(parsed.frontmatterData).sort();
   if (keys.length === 0) {
     return "";
   }
 
-  return keys.map((key) => `${key}:${frontmatter[key]}`).join("|");
+  const normalized: Record<string, unknown> = {};
+  for (const key of keys) {
+    normalized[key] = parsed.frontmatterData[key];
+  }
+
+  return stableSerialize(normalized);
 }
 
 async function* streamEvents(

@@ -38,6 +38,7 @@ describe("template registry", () => {
     const decoded = registry["custom-layout"]?.decode({
       layout: "custom-layout",
       frontmatter: {},
+      frontmatterData: {},
       bodyMarkdown: "",
       contentMarkdown: "",
       ast: { type: "root", children: [] },

@@ -93,6 +93,14 @@ export function SlideNav({
   const captureSlide = captureSlideId
     ? (slidesById.get(captureSlideId) ?? null)
     : null;
+  const captureSlideNumber = useMemo(() => {
+    if (!captureSlideId) {
+      return undefined;
+    }
+
+    const index = slides.findIndex((slide) => slide.id === captureSlideId);
+    return index >= 0 ? index + 1 : undefined;
+  }, [captureSlideId, slides]);
 
   useEffect(() => {
     slidesByIdRef.current = slidesById;
@@ -392,7 +400,11 @@ export function SlideNav({
                         height: slideHeight,
                       }}
                     >
-                      <SlideRenderer slide={slide} />
+                      <SlideRenderer
+                        slide={slide}
+                        slideNumber={index + 1}
+                        slideCount={slides.length}
+                      />
                     </article>
                   ) : null}
                   {mode === "bitmap" && bitmap ? (
@@ -447,7 +459,11 @@ export function SlideNav({
                 transformOrigin: "top left",
               }}
             >
-              <SlideRenderer slide={captureSlide} />
+              <SlideRenderer
+                slide={captureSlide}
+                slideNumber={captureSlideNumber}
+                slideCount={slides.length}
+              />
             </article>
           ) : null}
         </div>

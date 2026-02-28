@@ -86,6 +86,7 @@ describe("parseDeckMarkdown", () => {
 
     expect(parsed.slides[0].resolvedFrontmatter.footer).toBe("Acme 2026");
     expect(parsed.slides[1].resolvedFrontmatter.footer).toBe("Acme 2026");
+    expect(parsed.slides[1].resolvedPartials.footer).toBe("Acme 2026");
   });
 
   it("treats non-first explicit footer as slide-local override", () => {
@@ -95,6 +96,7 @@ describe("parseDeckMarkdown", () => {
 
     expect(parsed.slides[1].resolvedFrontmatter.footer).toBe("Team B");
     expect(parsed.slides[2].resolvedFrontmatter.footer).toBe("Acme 2026");
+    expect(parsed.slides[1].resolvedPartials.footer).toBe("Team B");
   });
 
   it("disables inherited footer with footer: off on a slide", () => {
@@ -104,6 +106,7 @@ describe("parseDeckMarkdown", () => {
 
     expect(parsed.slides[1].resolvedFrontmatter.footer).toBeUndefined();
     expect(parsed.slides[2].resolvedFrontmatter.footer).toBe("Acme 2026");
+    expect(parsed.slides[1].resolvedPartials.footer).toBeUndefined();
   });
 
   it("inherits from first slide when non-first footer is empty", () => {
@@ -122,6 +125,31 @@ describe("parseDeckMarkdown", () => {
 
     expect(parsed.slides[0].resolvedFrontmatter.footer).toBeUndefined();
     expect(parsed.slides[1].resolvedFrontmatter.footer).toBeUndefined();
+    expect(parsed.slides[1].resolvedPartials.footer).toBeUndefined();
+  });
+
+  it("inherits structured footer payloads from YAML", () => {
+    const parsed = parseDeckMarkdown(
+      `---
+layout: title-hero
+footer:
+  cols:
+    - "2026-02-28"
+    - ""
+    - "{{page}}/{{totalPages}}"
+---
+# Intro
+
+---
+layout: bullet-list
+---
+# Detail`
+    );
+
+    expect(parsed.slides[0].resolvedFrontmatter.footer).toBeUndefined();
+    expect(parsed.slides[1].resolvedPartials.footer).toEqual({
+      cols: ["2026-02-28", "", "{{page}}/{{totalPages}}"]
+    });
   });
 
   it("includes resolved frontmatter in slide documents", () => {
@@ -132,14 +160,28 @@ describe("parseDeckMarkdown", () => {
 
     expect(documents[1]?.resolvedFrontmatter?.footer).toBe("Acme 2026");
     expect(documents[0]?.resolvedFrontmatter?.footer).toBe("Acme 2026");
+    expect(documents[0]?.resolvedPartials?.footer).toBe("Acme 2026");
   });
 
   it("keeps normalized markdown based on explicit frontmatter only", () => {
     const parsed = parseDeckMarkdown(
-      `---\nlayout: title-hero\nfooter: Acme 2026\n---\n# Intro\n\n---\nlayout: bullet-list\n---\n# Detail`
+      `---
+layout: title-hero
+footer:
+  cols:
+    - "left"
+    - ""
+    - "right"
+---
+# Intro
+
+---
+layout: bullet-list
+---
+# Detail`
     );
 
-    const footerMatches = parsed.normalizedMarkdown.match(/footer: Acme 2026/g) ?? [];
+    const footerMatches = parsed.normalizedMarkdown.match(/\nfooter:/g) ?? [];
     expect(footerMatches).toHaveLength(1);
   });
 });
