@@ -10,5 +10,5 @@ export const metricHighlightTemplateModule: SlideTemplateModule = {
   containerRules: metricHighlightContainerRules,
   decode: decodeMetricHighlight,
   rootClassName: `${baseTemplateRootClassName} [&_h2]:text-[62px] [&_li]:text-[36px]`,
-  render: (props) => MetricHighlightTemplate(props as never)
+  render: (props, slots) => MetricHighlightTemplate(props as never, slots)
 };

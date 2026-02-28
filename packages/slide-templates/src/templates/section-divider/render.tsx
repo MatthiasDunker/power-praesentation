@@ -1,9 +1,19 @@
 import { BasicMarkdown } from "../../markdown/basic-markdown";
 import type { MarkdownTemplateProps } from "../shared";
+import type { SlideTemplateSlots } from "../../ui-types";
 
-export function SectionDividerTemplate({ markdown }: MarkdownTemplateProps) {
+export function SectionDividerTemplate(
+  { markdown }: MarkdownTemplateProps,
+  slots: SlideTemplateSlots = {}
+) {
   return (
-    <div className="grid h-full grid-rows-[1fr_auto_1fr]">
+    <div
+      className={
+        slots.footer
+          ? "grid h-full grid-rows-[1fr_auto_1fr_auto]"
+          : "grid h-full grid-rows-[1fr_auto_1fr]"
+      }
+    >
       <div className="self-end pb-8">
         <span className="inline-block h-px w-56 bg-zinc-300" />
       </div>
@@ -13,6 +23,7 @@ export function SectionDividerTemplate({ markdown }: MarkdownTemplateProps) {
       <div className="self-start pt-8 text-right">
         <span className="ml-auto inline-block h-px w-56 bg-zinc-300" />
       </div>
+      {slots.footer ? <div className="pt-4">{slots.footer}</div> : null}
     </div>
   );
 }

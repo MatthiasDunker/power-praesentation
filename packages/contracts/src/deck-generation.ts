@@ -72,6 +72,7 @@ export interface SlideDocument {
   id: string;
   layout: SlideLayoutId;
   rawMarkdown: string;
+  resolvedFrontmatter?: Record<string, string>;
   containers: SlideContainer[];
   warnings: string[];
 }
@@ -138,6 +139,7 @@ export const slideDocumentSchema = z.object({
   id: z.string().min(1),
   layout: z.string().min(1),
   rawMarkdown: z.string(),
+  resolvedFrontmatter: z.record(z.string()).optional(),
   containers: z.array(slideContainerSchema),
   warnings: z.array(z.string())
 });

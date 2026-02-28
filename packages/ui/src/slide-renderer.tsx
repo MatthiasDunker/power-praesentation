@@ -2,6 +2,7 @@ import type { SlideDocument, SlideLayoutId } from "@power/contracts";
 import { createSlideAstInputFromDocument } from "@power/slide-templates";
 import {
   createCoreTemplateModuleRegistry,
+  resolveTemplateSlots,
   type SlideTemplateModule,
   type SlideTemplateModuleRegistry
 } from "@power/slide-templates/ui";
@@ -63,6 +64,7 @@ export function SlideRenderer({ slide, registry = defaultRegistry }: SlideRender
 
   const astInput = createSlideAstInputFromDocument(slide);
   const decodeResult = template.decode(astInput);
+  const slots = resolveTemplateSlots(astInput.frontmatter);
   const themeClassName = normalizeThemeClassName(astInput.frontmatter.theme);
   const sectionClassName = [template.rootClassName, themeClassName]
     .filter((value) => typeof value === "string" && value.length > 0)
@@ -74,7 +76,7 @@ export function SlideRenderer({ slide, registry = defaultRegistry }: SlideRender
       data-power-slide-layout={slide.layout}
       data-power-slide-root
     >
-      {template.render(decodeResult.props)}
+      {template.render(decodeResult.props, slots)}
     </section>
   );
 }

@@ -2,6 +2,7 @@ import type { SlideDocument, SlideLayoutId } from "@power/contracts";
 import {
   createCoreTemplateRegistry,
   createSlideAstInputFromMarkdown,
+  parseFooterDirective,
   parseFrontmatter,
   toLines,
   type SlideAstContainerNode,
@@ -15,6 +16,7 @@ export interface ParsedSlide {
   bodyMarkdown: string;
   title: string;
   frontmatter: Record<string, string>;
+  resolvedFrontmatter: Record<string, string>;
   containers: Array<{ kind: string; markdown: string }>;
   warnings: string[];
 }
@@ -165,6 +167,28 @@ function normalizeSlideMarkdown(slide: ParsedSlide): string {
   return `---\n${frontmatterLines.join("\n")}\n---\n${slide.bodyMarkdown}`.trim();
 }
 
+function resolveFooterForSlide(
+  index: number,
+  explicitFooter: string | undefined,
+  deckDefaultFooter: string | undefined
+): string | undefined {
+  const directive = parseFooterDirective(explicitFooter);
+
+  if (index === 0) {
+    return directive.type === "value" ? directive.value : undefined;
+  }
+
+  if (directive.type === "value") {
+    return directive.value;
+  }
+
+  if (directive.type === "disabled") {
+    return undefined;
+  }
+
+  return deckDefaultFooter;
+}
+
 export function parseDeckMarkdown(
   input: string,
   options: ParseDeckMarkdownOptions = {}
@@ -182,14 +206,35 @@ export function parseDeckMarkdown(
   const fallbackTemplate = templateRegistry[fallbackLayout];
   const segments = extractTopLevelSegments(source);
   const deckWarnings: string[] = [];
+  const parsedSegments = segments.map((segment) => ({
+    segment,
+    parsedFrontmatter: parseFrontmatter(segment)
+  }));
+  const firstSlideFooter = parseFooterDirective(
+    parsedSegments[0]?.parsedFrontmatter.frontmatter.footer
+  );
+  const deckDefaultFooter =
+    firstSlideFooter.type === "value" ? firstSlideFooter.value : undefined;
 
-  const slides = segments.map((segment, index) => {
-    const parsedFrontmatter = parseFrontmatter(segment);
+  const slides = parsedSegments.map(({ segment, parsedFrontmatter }, index) => {
     const frontmatterLayout = parsedFrontmatter.frontmatter.layout?.trim();
     const layout =
       typeof frontmatterLayout === "string" && frontmatterLayout.length > 0
         ? frontmatterLayout
         : defaultLayout;
+    const resolvedFrontmatter = {
+      ...parsedFrontmatter.frontmatter
+    };
+    const resolvedFooter = resolveFooterForSlide(
+      index,
+      parsedFrontmatter.frontmatter.footer,
+      deckDefaultFooter
+    );
+    if (resolvedFooter) {
+      resolvedFrontmatter.footer = resolvedFooter;
+    } else {
+      delete resolvedFrontmatter.footer;
+    }
 
     const astInputResult = createSlideAstInputFromMarkdown({
       layout,
@@ -224,6 +269,7 @@ export function parseDeckMarkdown(
       bodyMarkdown: parsedFrontmatter.bodyMarkdown,
       title: extractTitle(astInputResult.input.contentMarkdown),
       frontmatter: parsedFrontmatter.frontmatter,
+      resolvedFrontmatter,
       containers: normalizeContainersForTemplate(
         astInputResult.input.containers,
         registryEntry
@@ -248,6 +294,7 @@ export function toSlideDocuments(parsedDeck: ParsedDeck): SlideDocument[] {
     id: slide.id,
     layout: slide.layout,
     rawMarkdown: slide.rawMarkdown,
+    resolvedFrontmatter: slide.resolvedFrontmatter,
     containers: slide.containers,
     warnings: slide.warnings
   }));

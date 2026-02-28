@@ -10,5 +10,5 @@ export const twoColumnTemplateModule: SlideTemplateModule = {
   containerRules: twoColumnContainerRules,
   decode: decodeTwoColumn,
   rootClassName: baseTemplateRootClassName,
-  render: (props) => TwoColumnTemplate(props as never)
+  render: (props, slots) => TwoColumnTemplate(props as never, slots)
 };

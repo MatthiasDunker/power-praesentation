@@ -1,8 +1,12 @@
 import { BasicMarkdown } from "../../markdown/basic-markdown";
 import type { MarkdownTemplateProps } from "../shared";
+import type { SlideTemplateSlots } from "../../ui-types";
 
-export function MetricHighlightTemplate({ markdown }: MarkdownTemplateProps) {
-  return (
+export function MetricHighlightTemplate(
+  { markdown }: MarkdownTemplateProps,
+  slots: SlideTemplateSlots = {}
+) {
+  const content = (
     <div className="grid h-full grid-rows-[auto_1fr] gap-8">
       <div className="grid grid-cols-[1fr_260px] gap-4">
         <div className="rounded-2xl border border-zinc-900 bg-zinc-900 px-8 py-6 text-zinc-100">
@@ -17,6 +21,17 @@ export function MetricHighlightTemplate({ markdown }: MarkdownTemplateProps) {
       <div className="rounded-2xl border border-zinc-200 bg-white px-8 py-7">
         <BasicMarkdown markdown={markdown} />
       </div>
+    </div>
+  );
+
+  if (!slots.footer) {
+    return content;
+  }
+
+  return (
+    <div className="grid h-full grid-rows-[minmax(0,1fr)_auto] gap-4">
+      <div className="min-h-0">{content}</div>
+      <div>{slots.footer}</div>
     </div>
   );
 }

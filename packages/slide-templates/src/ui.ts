@@ -4,6 +4,7 @@ import type { SlideTemplateModule, SlideTemplateModuleRegistry } from "./ui-type
 
 export { BasicMarkdown } from "./markdown/basic-markdown";
 export * from "./core-modules";
+export * from "./partials";
 export * from "./ui-registry";
 export * from "./ui-types";
 

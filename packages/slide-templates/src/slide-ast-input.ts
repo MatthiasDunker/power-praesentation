@@ -43,7 +43,8 @@ export function createSlideAstInputFromMarkdown({
 export function createSlideAstInputFromDocument(slide: SlideDocument): SlideAstInput {
   const parseResult = createSlideAstInputFromMarkdown({
     layout: slide.layout,
-    markdown: slide.rawMarkdown
+    markdown: slide.rawMarkdown,
+    frontmatter: slide.resolvedFrontmatter
   });
 
   return parseResult.input;

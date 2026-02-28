@@ -9,6 +9,6 @@ export const sectionDividerTemplateModule: SlideTemplateModule = {
   id: "section-divider" satisfies CoreTemplateId,
   containerRules: sectionDividerContainerRules,
   decode: decodeSectionDivider,
-  rootClassName: `${baseTemplateRootClassName} grid place-content-center text-center`,
-  render: (props) => SectionDividerTemplate(props as never)
+  rootClassName: `${baseTemplateRootClassName} text-center`,
+  render: (props, slots) => SectionDividerTemplate(props as never, slots)
 };

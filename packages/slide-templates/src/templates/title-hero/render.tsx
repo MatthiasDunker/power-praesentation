@@ -1,11 +1,12 @@
 import type { TitleHeroTemplateProps } from "./decode";
+import type { SlideTemplateSlots } from "../../ui-types";
 
 export function TitleHeroTemplate({
   overline,
   title,
   text,
   className,
-}: TitleHeroTemplateProps) {
+}: TitleHeroTemplateProps, slots: SlideTemplateSlots = {}) {
   return (
     <div
       className={[`page size-large tint-bgc-full tint-c-text`, className]
@@ -31,7 +32,11 @@ export function TitleHeroTemplate({
             </div>
           )}
         </div>
-        {/* {afterGrid} */}
+        {slots.footer ? (
+          <div className="col-start-1 col-span-full row-start-5 row-span-1 self-end">
+            {slots.footer}
+          </div>
+        ) : null}
       </div>
     </div>
   );

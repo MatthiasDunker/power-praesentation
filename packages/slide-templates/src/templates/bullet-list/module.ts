@@ -10,5 +10,5 @@ export const bulletListTemplateModule: SlideTemplateModule = {
   containerRules: bulletListContainerRules,
   decode: decodeBulletList,
   rootClassName: baseTemplateRootClassName,
-  render: (props) => BulletListTemplate(props as never)
+  render: (props, slots) => BulletListTemplate(props as never, slots)
 };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseDeckMarkdown } from "./markdown-parser";
+import { parseDeckMarkdown, toSlideDocuments } from "./markdown-parser";
 
 describe("parseDeckMarkdown", () => {
   it("detects slides separated by ---", () => {
@@ -77,5 +77,69 @@ describe("parseDeckMarkdown", () => {
 
     expect(parsed.slides[0].warnings).toHaveLength(0);
     expect(parsed.slides[0].title).toBe("Intro");
+  });
+
+  it("inherits first-slide footer when later slides omit it", () => {
+    const parsed = parseDeckMarkdown(
+      `---\nlayout: title-hero\nfooter: Acme 2026\n---\n# Intro\n\n---\nlayout: bullet-list\n---\n# Detail`
+    );
+
+    expect(parsed.slides[0].resolvedFrontmatter.footer).toBe("Acme 2026");
+    expect(parsed.slides[1].resolvedFrontmatter.footer).toBe("Acme 2026");
+  });
+
+  it("treats non-first explicit footer as slide-local override", () => {
+    const parsed = parseDeckMarkdown(
+      `---\nlayout: title-hero\nfooter: Acme 2026\n---\n# Intro\n\n---\nlayout: bullet-list\nfooter: Team B\n---\n# Detail\n\n---\nlayout: bullet-list\n---\n# Summary`
+    );
+
+    expect(parsed.slides[1].resolvedFrontmatter.footer).toBe("Team B");
+    expect(parsed.slides[2].resolvedFrontmatter.footer).toBe("Acme 2026");
+  });
+
+  it("disables inherited footer with footer: off on a slide", () => {
+    const parsed = parseDeckMarkdown(
+      `---\nlayout: title-hero\nfooter: Acme 2026\n---\n# Intro\n\n---\nlayout: bullet-list\nfooter: off\n---\n# Detail\n\n---\nlayout: bullet-list\n---\n# Summary`
+    );
+
+    expect(parsed.slides[1].resolvedFrontmatter.footer).toBeUndefined();
+    expect(parsed.slides[2].resolvedFrontmatter.footer).toBe("Acme 2026");
+  });
+
+  it("inherits from first slide when non-first footer is empty", () => {
+    const parsed = parseDeckMarkdown(
+      `---\nlayout: title-hero\nfooter: Acme 2026\n---\n# Intro\n\n---\nlayout: bullet-list\nfooter:\n---\n# Detail`
+    );
+
+    expect(parsed.slides[1].frontmatter.footer).toBe("");
+    expect(parsed.slides[1].resolvedFrontmatter.footer).toBe("Acme 2026");
+  });
+
+  it("does not produce a default footer when first slide sets footer: off", () => {
+    const parsed = parseDeckMarkdown(
+      `---\nlayout: title-hero\nfooter: off\n---\n# Intro\n\n---\nlayout: bullet-list\n---\n# Detail`
+    );
+
+    expect(parsed.slides[0].resolvedFrontmatter.footer).toBeUndefined();
+    expect(parsed.slides[1].resolvedFrontmatter.footer).toBeUndefined();
+  });
+
+  it("includes resolved frontmatter in slide documents", () => {
+    const parsed = parseDeckMarkdown(
+      `---\nlayout: title-hero\nfooter: Acme 2026\n---\n# Intro\n\n---\nlayout: bullet-list\n---\n# Detail`
+    );
+    const documents = toSlideDocuments(parsed);
+
+    expect(documents[1]?.resolvedFrontmatter?.footer).toBe("Acme 2026");
+    expect(documents[0]?.resolvedFrontmatter?.footer).toBe("Acme 2026");
+  });
+
+  it("keeps normalized markdown based on explicit frontmatter only", () => {
+    const parsed = parseDeckMarkdown(
+      `---\nlayout: title-hero\nfooter: Acme 2026\n---\n# Intro\n\n---\nlayout: bullet-list\n---\n# Detail`
+    );
+
+    const footerMatches = parsed.normalizedMarkdown.match(/footer: Acme 2026/g) ?? [];
+    expect(footerMatches).toHaveLength(1);
   });
 });

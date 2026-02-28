@@ -10,5 +10,5 @@ export const titleHeroTemplateModule: SlideTemplateModule = {
   containerRules: titleHeroContainerRules,
   decode: decodeTitleHero,
   rootClassName: `${baseTemplateRootClassName} flex flex-col justify-center`,
-  render: (props) => TitleHeroTemplate(props as never)
+  render: (props, slots) => TitleHeroTemplate(props as never, slots)
 };

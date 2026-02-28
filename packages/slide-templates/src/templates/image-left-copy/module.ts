@@ -9,6 +9,6 @@ export const imageLeftCopyTemplateModule: SlideTemplateModule = {
   id: "image-left-copy" satisfies CoreTemplateId,
   containerRules: imageLeftCopyContainerRules,
   decode: decodeImageLeftCopy,
-  rootClassName: `${baseTemplateRootClassName} grid grid-cols-[44%_56%] gap-6`,
-  render: (props) => ImageLeftCopyTemplate(props as never)
+  rootClassName: `${baseTemplateRootClassName} grid grid-cols-[44%_56%] grid-rows-[minmax(0,1fr)_auto] gap-6`,
+  render: (props, slots) => ImageLeftCopyTemplate(props as never, slots)
 };

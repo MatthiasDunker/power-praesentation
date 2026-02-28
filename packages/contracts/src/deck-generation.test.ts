@@ -74,4 +74,19 @@ describe("generation stream event schema", () => {
 
     expect(parsed.success).toBe(true);
   });
+
+  it("accepts optional resolved frontmatter on slide documents", () => {
+    const parsed = slideDocumentSchema.safeParse({
+      id: "slide-1",
+      layout: "title-hero",
+      rawMarkdown: "# Hello",
+      resolvedFrontmatter: {
+        footer: "Acme Inc. 2026"
+      },
+      containers: [],
+      warnings: []
+    });
+
+    expect(parsed.success).toBe(true);
+  });
 });

@@ -10,5 +10,5 @@ export const quoteFocusTemplateModule: SlideTemplateModule = {
   containerRules: quoteFocusContainerRules,
   decode: decodeQuoteFocus,
   rootClassName: `${baseTemplateRootClassName} [&_p]:text-[44px] [&_p]:italic`,
-  render: (props) => QuoteFocusTemplate(props as never)
+  render: (props, slots) => QuoteFocusTemplate(props as never, slots)
 };

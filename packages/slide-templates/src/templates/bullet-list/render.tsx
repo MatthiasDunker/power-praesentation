@@ -1,12 +1,13 @@
 import type { BulletListTemplateProps } from "./decode";
+import type { SlideTemplateSlots } from "../../ui-types";
 
 export function BulletListTemplate({
   title,
   subtitle,
   bullets,
   notes
-}: BulletListTemplateProps) {
-  return (
+}: BulletListTemplateProps, slots: SlideTemplateSlots = {}) {
+  const content = (
     <div className="grid h-full grid-cols-[1fr_300px] gap-10">
       <section className="rounded-2xl border border-zinc-200 bg-zinc-50/70 px-10 py-8">
         <h1 className="mb-5 text-[66px] leading-tight">{title}</h1>
@@ -35,6 +36,17 @@ export function BulletListTemplate({
           ))}
         </ol>
       </aside>
+    </div>
+  );
+
+  if (!slots.footer) {
+    return content;
+  }
+
+  return (
+    <div className="grid h-full grid-rows-[minmax(0,1fr)_auto] gap-4">
+      <div className="min-h-0">{content}</div>
+      <div>{slots.footer}</div>
     </div>
   );
 }

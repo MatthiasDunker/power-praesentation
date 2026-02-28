@@ -1,7 +1,11 @@
 import { BasicMarkdown } from "../../markdown/basic-markdown";
 import type { MarkdownTemplateProps } from "../shared";
+import type { SlideTemplateSlots } from "../../ui-types";
 
-export function ImageRightCopyTemplate({ markdown }: MarkdownTemplateProps) {
+export function ImageRightCopyTemplate(
+  { markdown }: MarkdownTemplateProps,
+  slots: SlideTemplateSlots = {}
+) {
   return (
     <>
       <div className="self-center rounded-2xl border border-zinc-200 bg-white px-8 py-7">
@@ -13,6 +17,7 @@ export function ImageRightCopyTemplate({ markdown }: MarkdownTemplateProps) {
           Visual placeholder
         </p>
       </div>
+      {slots.footer ? <div className="col-span-full pt-2">{slots.footer}</div> : null}
     </>
   );
 }
