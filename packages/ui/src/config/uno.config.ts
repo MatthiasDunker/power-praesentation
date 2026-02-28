@@ -76,7 +76,11 @@ export default defineConfig({
           top:0;
           left: -0.06em;
         }
-
+    .page {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
 
     .the-grid {
       position: absolute;

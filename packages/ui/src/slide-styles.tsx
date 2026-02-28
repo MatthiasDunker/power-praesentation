@@ -8,6 +8,51 @@ const cssCacheByTemplateKey = new Map<string, string>();
 let generatorPromise: Promise<
   Awaited<ReturnType<typeof createGenerator>>
 > | null = null;
+const defaultSlideScopeSelector = "[data-power-slide-root]";
+
+interface GenerateSlideCssFromHtmlOptions {
+  cacheKey?: string;
+  scopeSelector?: string | null;
+}
+
+function resolveGenerateSlideCssOptions(
+  cacheKeyOrOptions?: string | GenerateSlideCssFromHtmlOptions,
+): Required<GenerateSlideCssFromHtmlOptions> {
+  if (typeof cacheKeyOrOptions === "string") {
+    return {
+      cacheKey: cacheKeyOrOptions,
+      scopeSelector: defaultSlideScopeSelector,
+    };
+  }
+
+  return {
+    cacheKey: cacheKeyOrOptions?.cacheKey ?? "",
+    scopeSelector:
+      cacheKeyOrOptions?.scopeSelector ?? defaultSlideScopeSelector,
+  };
+}
+
+function getCacheLookupKey(
+  cacheKey: string,
+  scopeSelector: string | null,
+): string {
+  const normalizedScopeSelector = scopeSelector?.trim() || "none";
+  return `${cacheKey}::${normalizedScopeSelector}`;
+}
+
+function scopeCssText(cssText: string, scopeSelector: string | null): string {
+  if (!scopeSelector || scopeSelector.trim().length === 0) {
+    return cssText;
+  }
+
+  if (cssText.trim().length === 0) {
+    return cssText;
+  }
+
+  // Keep root-level variables local to each slide root when scoping.
+  const normalizedCssText = cssText.replace(/:root\b/g, ":scope");
+  return `@scope (${scopeSelector}){${normalizedCssText}}`;
+}
 
 async function getUnoGenerator() {
   if (!generatorPromise) {
@@ -58,10 +103,16 @@ async function collectRenderedSlidesHtml(selector: string): Promise<string> {
 
 export async function generateSlideCssFromHtml(
   html: string,
-  cacheKey?: string,
+  cacheKeyOrOptions?: string | GenerateSlideCssFromHtmlOptions,
 ): Promise<string> {
-  if (cacheKey && cssCacheByTemplateKey.has(cacheKey)) {
-    return cssCacheByTemplateKey.get(cacheKey) ?? "";
+  const { cacheKey, scopeSelector } =
+    resolveGenerateSlideCssOptions(cacheKeyOrOptions);
+  const scopedCacheKey = cacheKey
+    ? getCacheLookupKey(cacheKey, scopeSelector)
+    : null;
+
+  if (scopedCacheKey && cssCacheByTemplateKey.has(scopedCacheKey)) {
+    return cssCacheByTemplateKey.get(scopedCacheKey) ?? "";
   }
 
   if (html.trim().length === 0) {
@@ -73,10 +124,10 @@ export async function generateSlideCssFromHtml(
     minify: true,
   });
 
-  const result = css || "";
+  const result = scopeCssText(css || "", scopeSelector);
 
-  if (cacheKey) {
-    cssCacheByTemplateKey.set(cacheKey, result);
+  if (scopedCacheKey) {
+    cssCacheByTemplateKey.set(scopedCacheKey, result);
   }
 
   return result;
@@ -84,13 +135,16 @@ export async function generateSlideCssFromHtml(
 
 interface GenerateSlideCssForExportOptions {
   autoprefix?: boolean;
+  scopeSelector?: string | null;
 }
 
 export async function generateSlideCssForExport(
   html: string,
   options: GenerateSlideCssForExportOptions = {},
 ): Promise<string> {
-  const css = await generateSlideCssFromHtml(html);
+  const css = await generateSlideCssFromHtml(html, {
+    scopeSelector: options.scopeSelector,
+  });
 
   if (options.autoprefix !== true) {
     return css;
@@ -120,7 +174,7 @@ interface SlideRuntimeStyleSheetProps {
 export function SlideRuntimeStyleSheet({
   templateSignature,
   registryVersion = coreSlideTemplateRegistryVersion,
-  selector = "[data-power-slide-root]",
+  selector = defaultSlideScopeSelector,
 }: SlideRuntimeStyleSheetProps) {
   const [cssText, setCssText] = useState("");
 
@@ -134,7 +188,10 @@ export function SlideRuntimeStyleSheet({
     const run = async () => {
       const html = await collectRenderedSlidesHtml(selector);
       const cacheKey = `${registryVersion}:${templateSignature || "none"}`;
-      const css = await generateSlideCssFromHtml(html, cacheKey);
+      const css = await generateSlideCssFromHtml(html, {
+        cacheKey,
+        scopeSelector: selector,
+      });
 
       if (!cancelled) {
         setCssText(css);

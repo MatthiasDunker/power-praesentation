@@ -155,7 +155,13 @@ function normalizeContainersForTemplate(
 }
 
 function normalizeSlideMarkdown(slide: ParsedSlide): string {
-  const frontmatterLines = [`layout: ${slide.layout}`];
+  const frontmatterEntries = Object.entries(slide.frontmatter).filter(
+    ([key]) => key !== "layout",
+  );
+  const frontmatterLines = [
+    `layout: ${slide.layout}`,
+    ...frontmatterEntries.map(([key, value]) => `${key}: ${value}`),
+  ];
   return `---\n${frontmatterLines.join("\n")}\n---\n${slide.bodyMarkdown}`.trim();
 }
 

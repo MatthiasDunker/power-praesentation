@@ -4,6 +4,7 @@ export interface TitleHeroTemplateProps {
   overline?: string;
   title: string;
   text?: string;
+  className?: string;
 }
 
 function asNonEmpty(value: string | undefined): string | undefined {
@@ -13,6 +14,15 @@ function asNonEmpty(value: string | undefined): string | undefined {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function toThemeClassName(value: string | undefined): string {
+  const theme = asNonEmpty(value);
+  if (!theme) {
+    return "theme-default";
+  }
+
+  return theme.startsWith("theme-") ? theme : `theme-${theme}`;
 }
 
 export function decodeTitleHero(
@@ -54,6 +64,7 @@ export function decodeTitleHero(
       overline,
       title,
       text,
+      className: toThemeClassName(input.frontmatter.theme),
     },
     warnings: [],
   };

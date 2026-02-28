@@ -19,6 +19,16 @@ describe("parseDeckMarkdown", () => {
     expect(parsed.normalizedMarkdown).not.toContain("\n\n---\n\n---\nlayout:");
   });
 
+  it("keeps non-layout frontmatter fields in normalized markdown", () => {
+    const parsed = parseDeckMarkdown(
+      `---\nlayout: title-hero\ntheme: theme-sunrise\noverline: Welcome\n---\n# Intro`,
+    );
+
+    expect(parsed.normalizedMarkdown).toContain("layout: title-hero");
+    expect(parsed.normalizedMarkdown).toContain("theme: theme-sunrise");
+    expect(parsed.normalizedMarkdown).toContain("overline: Welcome");
+  });
+
   it("supports markdown syntax inside fenced containers", () => {
     const parsed = parseDeckMarkdown(`---\nlayout: two-column\n---\n# Compare\n\n::: column\n- item one\n- item two\n:::\n\n::: column\n**bold**\n:::`);
 

@@ -64,6 +64,53 @@ function updateTask(
   );
 }
 
+function parseFrontmatterFromRawSlideMarkdown(
+  rawMarkdown: string,
+): Record<string, string> {
+  const normalized = rawMarkdown.replace(/\r\n?/g, "\n").trimStart();
+
+  if (!normalized.startsWith("---\n")) {
+    return {};
+  }
+
+  const endIndex = normalized.indexOf("\n---\n", 4);
+  if (endIndex < 0) {
+    return {};
+  }
+
+  const block = normalized.slice(4, endIndex);
+  const frontmatter: Record<string, string> = {};
+
+  for (const line of block.split("\n")) {
+    const delimiterIndex = line.indexOf(":");
+    if (delimiterIndex <= 0) {
+      continue;
+    }
+
+    const key = line.slice(0, delimiterIndex).trim();
+    const value = line.slice(delimiterIndex + 1).trim();
+
+    if (key.length === 0) {
+      continue;
+    }
+
+    frontmatter[key] = value;
+  }
+
+  return frontmatter;
+}
+
+function toFrontmatterStyleSignature(rawMarkdown: string): string {
+  const frontmatter = parseFrontmatterFromRawSlideMarkdown(rawMarkdown);
+  const keys = Object.keys(frontmatter).sort();
+
+  if (keys.length === 0) {
+    return "";
+  }
+
+  return keys.map((key) => `${key}:${frontmatter[key]}`).join("|");
+}
+
 async function* streamEvents(
   payload: GenerateDeckRequest,
 ): AsyncGenerator<GenerationStreamEvent> {
@@ -232,7 +279,11 @@ export function SlideWorkspaceShell() {
     const layouts = Array.from(
       new Set(displaySlides.map((slide) => slide.layout))
     ).sort();
-    return layouts.join("|");
+    const frontmatterSignature = displaySlides
+      .map((slide) => `${slide.id}:${toFrontmatterStyleSignature(slide.rawMarkdown)}`)
+      .join("||");
+
+    return `${layouts.join("|")}::${frontmatterSignature}`;
   }, [displaySlides]);
 
   const submitPrompt = async (payload: GenerateDeckRequest) => {

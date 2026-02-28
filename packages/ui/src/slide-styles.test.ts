@@ -11,6 +11,22 @@ describe("slide style generation", () => {
     expect(css).toContain("padding");
   });
 
+  it("scopes css to slide roots by default", async () => {
+    const css = await generateSlideCssFromHtml('<div class="text-red-500"></div>');
+
+    expect(css).toContain("@scope ([data-power-slide-root])");
+    expect(css).not.toContain(":root");
+    expect(css).toContain(":scope");
+  });
+
+  it("supports opting out of scoping", async () => {
+    const css = await generateSlideCssFromHtml('<div class="text-red-500"></div>', {
+      scopeSelector: null,
+    });
+
+    expect(css).not.toContain("@scope (");
+  });
+
   it("reuses cached css by cache key", async () => {
     const first = await generateSlideCssFromHtml(
       '<div class="text-red-500"></div>',

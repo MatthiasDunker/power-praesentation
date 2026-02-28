@@ -4,9 +4,14 @@ export function TitleHeroTemplate({
   overline,
   title,
   text,
+  className,
 }: TitleHeroTemplateProps) {
   return (
-    <div className={`page size-large tint-bgc-full tint-c-text`}>
+    <div
+      className={[`page size-large tint-bgc-full tint-c-text`, className]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="the-grid grid grid-cols-9 grid-rows-5 gap-gutter">
         <div
           className={`flex flex-col col-start-1 col-span-full row-start-1 row-span-4 justify-center ${
