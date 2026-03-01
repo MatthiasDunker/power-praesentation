@@ -2,7 +2,7 @@
 
 import { getLayerSuffix } from "../_utils/utilities";
 import { CssVariableConfig, PresetSemanticUtilsOptions } from "..";
-import { Shortcut } from "unocss";
+import type { Shortcut } from "@unocss/core";
 import { CreateRegExpConfigFunction } from "./regexp-config";
 
 export const createShortcutsFactory =

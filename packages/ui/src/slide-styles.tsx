@@ -1,5 +1,4 @@
 import { createGenerator } from "@unocss/core";
-import presetWind from "@unocss/preset-wind";
 import { coreSlideTemplateRegistryVersion } from "@power/slide-templates";
 import { useEffect, useState } from "react";
 import config from "./config/uno.config";

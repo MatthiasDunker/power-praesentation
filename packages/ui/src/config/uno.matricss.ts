@@ -120,7 +120,7 @@ export function createConfig(): PresetMatricssOptions["config"] {
           },
           large: {
             display: {
-              f: "400 112px/144px var(--font-display)",
+              f: "400 112px/128px var(--font-display)",
               ls: "0.02em",
             },
             headline: {
@@ -132,7 +132,7 @@ export function createConfig(): PresetMatricssOptions["config"] {
               ls: "0.015em",
             },
             overline: {
-              f: "400 64px/80px var(--font-display)",
+              f: "400 56px/72px var(--font-display)",
               ls: "0.02em",
             },
           },

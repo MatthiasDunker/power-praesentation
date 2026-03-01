@@ -158,9 +158,9 @@ body {
   position: absolute;
   top: 0.3rem;
   bottom: 0.3rem;
-  left: 0.15rem;
+  left: 0;
   width: 3px;
-  border-radius: 9999px;
+  border-radius: 0 9999px 9999px 0;
   opacity: 0;
   pointer-events: none;
   background-color: Highlight;

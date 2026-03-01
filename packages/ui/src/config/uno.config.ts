@@ -1,14 +1,10 @@
-import {
-  defineConfig,
-  // presetAttributify,
-  // presetIcons,
-  presetWind3,
-  // presetWebFonts,
-} from "unocss";
+import type { UserConfig } from "unocss";
+import presetWind from "@unocss/preset-wind";
 import presetReset from "./uno.preset-reset";
 import presetSemantics from "./uno-preset-semantics";
 import presetMatricss from "@matricss/unocss-preset";
 import { createConfig } from "./uno.matricss";
+import { PresetOrFactoryAwaitable, presetWind3 } from "unocss";
 
 const //RESET = "reset",
   BASE = "base",
@@ -22,7 +18,7 @@ const //RESET = "reset",
 // THEMES = "themes",
 // MOTION = "motion";
 
-export default defineConfig({
+const unoConfig: UserConfig = {
   layers: {
     [BASE]: -3,
     preflights: -2,
@@ -199,4 +195,6 @@ export default defineConfig({
       },
     }),
   ],
-});
+};
+
+export default unoConfig;

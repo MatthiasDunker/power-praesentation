@@ -92,10 +92,17 @@ export type AgentToolProps = ComponentProps<typeof AccordionItem> & {
 
 export const AgentTool = memo(
   ({ className, tool, value, ...props }: AgentToolProps) => {
+    const legacyInputSchema =
+      "inputSchema" in tool
+        ? (tool as { inputSchema?: unknown }).inputSchema
+        : undefined;
+
     const schema =
       "jsonSchema" in tool && tool.jsonSchema
         ? tool.jsonSchema
-        : tool.inputSchema;
+        : "parameters" in tool && tool.parameters
+          ? tool.parameters
+          : legacyInputSchema;
 
     return (
       <AccordionItem
