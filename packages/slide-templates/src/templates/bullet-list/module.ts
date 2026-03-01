@@ -1,14 +1,13 @@
 import type { CoreTemplateId } from "@power/contracts";
 import type { SlideTemplateModule } from "../../ui-types";
-import { decodeBulletList } from "./decode";
 import { BulletListTemplate } from "./render";
-import { bulletListContainerRules } from "./spec";
+import { bulletListTemplateDefinition } from "./spec";
 import { baseTemplateRootClassName } from "../shared";
 
 export const bulletListTemplateModule: SlideTemplateModule = {
   id: "bullet-list" satisfies CoreTemplateId,
-  containerRules: bulletListContainerRules,
-  decode: decodeBulletList,
+  containerRules: bulletListTemplateDefinition.containerRules,
+  decoder: bulletListTemplateDefinition.decoder,
   rootClassName: baseTemplateRootClassName,
   render: (props, slots) => BulletListTemplate(props as never, slots)
 };

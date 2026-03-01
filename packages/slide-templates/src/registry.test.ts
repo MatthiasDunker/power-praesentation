@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { decodeSlideTemplate } from "./decode-engine";
 import { createCoreTemplateRegistry, createTemplateRegistry } from "./index";
 
 describe("template registry", () => {
@@ -23,27 +24,36 @@ describe("template registry", () => {
         {
           id: "custom-layout",
           containerRules: [],
-          decode: () => ({ props: {}, warnings: [] })
+          decoder: {
+            kind: "custom",
+            decode: () => ({ props: {}, warnings: [] })
+          }
         }
       ],
       extensions: [
         {
           id: "custom-layout",
           containerRules: [],
-          decode: () => ({ props: { from: "extension" }, warnings: [] })
+          decoder: {
+            kind: "custom",
+            decode: () => ({ props: { from: "extension" }, warnings: [] })
+          }
         }
       ]
     });
 
-    const decoded = registry["custom-layout"]?.decode({
-      layout: "custom-layout",
-      frontmatter: {},
-      frontmatterData: {},
-      bodyMarkdown: "",
-      contentMarkdown: "",
-      ast: { type: "root", children: [] },
-      containers: []
-    });
+    const template = registry["custom-layout"];
+    const decoded = template
+      ? decodeSlideTemplate(template, {
+          layout: "custom-layout",
+          frontmatter: {},
+          frontmatterData: {},
+          bodyMarkdown: "",
+          contentMarkdown: "",
+          ast: { type: "root", children: [] },
+          containers: []
+        })
+      : undefined;
 
     expect(decoded?.props).toEqual({ from: "extension" });
   });

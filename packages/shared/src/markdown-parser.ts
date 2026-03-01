@@ -2,6 +2,7 @@ import type { SlideDocument, SlideLayoutId } from "@power/contracts";
 import {
   createCoreTemplateRegistry,
   createSlideAstInputFromMarkdown,
+  decodeSlideTemplate,
   parseFooterDirective,
   parseFrontmatter,
   stringifyFrontmatter,
@@ -276,7 +277,7 @@ export function parseDeckMarkdown(
     }
 
     if (decodeTarget) {
-      const decodeResult = decodeTarget.decode(astInputResult.input);
+      const decodeResult = decodeSlideTemplate(decodeTarget, astInputResult.input);
       warnings.push(...decodeResult.warnings);
     }
 

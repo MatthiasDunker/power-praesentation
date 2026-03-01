@@ -3,6 +3,7 @@ import { createTemplateRegistry } from "./registry";
 import type { SlideTemplateDefinition, SlideTemplateRegistry } from "./types";
 
 export * from "./core-definitions";
+export * from "./decode-engine";
 export * from "./fenced-containers";
 export * from "./frontmatter";
 export * from "./markdown-ast";

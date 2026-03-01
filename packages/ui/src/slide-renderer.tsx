@@ -1,5 +1,5 @@
 import type { SlideDocument, SlideLayoutId } from "@power/contracts";
-import { createSlideAstInputFromDocument } from "@power/slide-templates";
+import { createSlideAstInputFromDocument, decodeSlideTemplate } from "@power/slide-templates";
 import {
   createCoreTemplateModuleRegistry,
   resolveTemplateSlots,
@@ -70,7 +70,7 @@ export function SlideRenderer({
   }
 
   const astInput = createSlideAstInputFromDocument(slide);
-  const decodeResult = template.decode(astInput);
+  const decodeResult = decodeSlideTemplate(template, astInput);
   const slots = resolveTemplateSlots(
     {
       frontmatter: astInput.frontmatter,

@@ -45,15 +45,15 @@ export default defineConfig({
         `
 
 @font-face {
-  font-family: "Radnika Next";
+  font-family: "Switzer";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
   src:
-    url("/fonts/radnika_next-regular.woff2") format("woff2");
+    url("/fonts/switzer-regular.woff2") format("woff2");
 }
         :root {
-          --font-main: "Radnika Next", system-ui, sans-serif;
+          --font-main: "Switzer", system-ui, sans-serif;
           --font-display: var(--font-main), system-ui, sans-serif;
         }
            

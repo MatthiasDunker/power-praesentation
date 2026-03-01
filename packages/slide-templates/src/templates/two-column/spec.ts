@@ -1,4 +1,6 @@
-import type { SlideContainerRule } from "../../types";
+import type { SlideContainerRule, SlideTemplateDefinition } from "../../types";
+import type { TwoColumnTemplateProps } from "../shared";
+import { twoColumnTemplateDecoder } from "../shared";
 
 export const twoColumnContainerRules: readonly SlideContainerRule[] = [
   {
@@ -7,3 +9,9 @@ export const twoColumnContainerRules: readonly SlideContainerRule[] = [
     max: 2
   }
 ];
+
+export const twoColumnTemplateDefinition: SlideTemplateDefinition<TwoColumnTemplateProps> = {
+  id: "two-column",
+  containerRules: twoColumnContainerRules,
+  decoder: twoColumnTemplateDecoder
+};

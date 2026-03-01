@@ -26,7 +26,10 @@ describe("slide renderer registry", () => {
       {
         id: "bullet-list",
         containerRules: [],
-        decode: () => ({ props: { markdown: "override" }, warnings: [] }),
+        decoder: {
+          kind: "custom",
+          decode: () => ({ props: { markdown: "override" }, warnings: [] })
+        },
         rootClassName: "override",
         render: () => null
       }
@@ -80,7 +83,10 @@ theme: theme-esforin
       {
         id: "title-hero",
         containerRules: [],
-        decode: () => ({ props: {}, warnings: [] }),
+        decoder: {
+          kind: "custom",
+          decode: () => ({ props: {}, warnings: [] })
+        },
         rootClassName: "override",
         render: (_props, slots) => {
           capturedFooter = slots?.footer as ReactElement<{ value: unknown }> | undefined;
@@ -121,7 +127,10 @@ layout: title-hero
       {
         id: "title-hero",
         containerRules: [],
-        decode: () => ({ props: {}, warnings: [] }),
+        decoder: {
+          kind: "custom",
+          decode: () => ({ props: {}, warnings: [] })
+        },
         rootClassName: "override",
         render: (_props, slots) => {
           capturedFooter = slots?.footer as ReactElement<{ value: unknown }> | undefined;
@@ -154,7 +163,10 @@ footer: off
       {
         id: "title-hero",
         containerRules: [],
-        decode: () => ({ props: {}, warnings: [] }),
+        decoder: {
+          kind: "custom",
+          decode: () => ({ props: {}, warnings: [] })
+        },
         rootClassName: "override",
         render: (_props, slots) => {
           capturedFooter = slots?.footer as ReactElement<{ value: unknown }> | undefined;
