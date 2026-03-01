@@ -46,6 +46,15 @@ export interface SlideContainer {
   markdown: string;
 }
 
+export type SlideDiagnosticSeverity = "warning" | "error";
+
+export interface SlideDiagnostic {
+  severity: SlideDiagnosticSeverity;
+  message: string;
+  code?: string;
+  field?: string;
+}
+
 export interface OutlineItem {
   id: string;
   title: string;
@@ -75,7 +84,7 @@ export interface SlideDocument {
   resolvedFrontmatter?: Record<string, string>;
   resolvedPartials?: Record<string, unknown>;
   containers: SlideContainer[];
-  warnings: string[];
+  diagnostics: SlideDiagnostic[];
 }
 
 export interface DeckDocument {
@@ -136,6 +145,13 @@ const slideContainerSchema = z.object({
   markdown: z.string()
 });
 
+const slideDiagnosticSchema = z.object({
+  severity: z.enum(["warning", "error"]),
+  message: z.string().min(1),
+  code: z.string().min(1).optional(),
+  field: z.string().min(1).optional()
+});
+
 export const slideDocumentSchema = z.object({
   id: z.string().min(1),
   layout: z.string().min(1),
@@ -143,7 +159,7 @@ export const slideDocumentSchema = z.object({
   resolvedFrontmatter: z.record(z.string()).optional(),
   resolvedPartials: z.record(z.unknown()).optional(),
   containers: z.array(slideContainerSchema),
-  warnings: z.array(z.string())
+  diagnostics: z.array(slideDiagnosticSchema)
 });
 
 const inferredContextSchema = z.object({

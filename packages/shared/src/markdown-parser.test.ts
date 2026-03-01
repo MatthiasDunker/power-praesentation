@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { parseDeckMarkdown, toSlideDocuments } from "./markdown-parser";
+import {
+  parseDeckMarkdown,
+  parseSingleSlideMarkdown,
+  splitDeckMarkdownForEditing,
+  splitDeckMarkdownForEditingDetailed,
+  toSlideDocuments
+} from "./markdown-parser";
 
 describe("parseDeckMarkdown", () => {
   it("detects slides separated by ---", () => {
@@ -19,6 +25,50 @@ describe("parseDeckMarkdown", () => {
     expect(parsed.normalizedMarkdown).not.toContain("\n\n---\n\n---\nlayout:");
   });
 
+  it("splits editor segments even when a fenced container is unclosed before separator", () => {
+    const markdown = [
+      "---\nlayout: two-column\n---\n# Compare\n\n::: leftColumn\nLeft side",
+      "---\nlayout: title-hero\n---\n# Next\n\nText"
+    ].join("\n\n---\n\n");
+
+    const segments = splitDeckMarkdownForEditing(markdown);
+
+    expect(segments).toHaveLength(2);
+    expect(segments[0] ?? "").toContain("::: leftColumn");
+    expect(segments[1] ?? "").toContain("layout: title-hero");
+  });
+
+  it("flags tolerant boundary recovery diagnostics for split editor segments", () => {
+    const markdown = [
+      "---\nlayout: two-column\n---\n# Compare\n\n::: leftColumn\nLeft side",
+      "---\nlayout: title-hero\n---\n# Next\n\nText"
+    ].join("\n\n---\n\n");
+
+    const detailedSegments = splitDeckMarkdownForEditingDetailed(markdown);
+    expect(detailedSegments).toHaveLength(2);
+
+    const firstSegment = detailedSegments[0];
+    const firstSlide = parseSingleSlideMarkdown(firstSegment?.markdown ?? "", {
+      recoveredBoundary: firstSegment?.recoveredBoundary ?? false
+    });
+
+    expect(firstSegment?.recoveredBoundary).toBe(true);
+    expect(firstSlide.diagnostics.map((diagnostic) => diagnostic.code)).toContain(
+      "tolerant_boundary_recovery"
+    );
+  });
+
+  it("round-trips canonical editor separators in edit splitting", () => {
+    const markdown = [
+      "---\nlayout: title-hero\n---\n# Intro",
+      "---\nlayout: bullet-list\n---\n# Next\n\n- One"
+    ].join("\n\n---\n\n");
+
+    const segments = splitDeckMarkdownForEditing(markdown);
+
+    expect(segments.join("\n\n---\n\n")).toBe(markdown);
+  });
+
   it("keeps non-layout frontmatter fields in normalized markdown", () => {
     const parsed = parseDeckMarkdown(
       `---\nlayout: title-hero\ntheme: theme-sunrise\noverline: Welcome\n---\n# Intro`,
@@ -30,18 +80,20 @@ describe("parseDeckMarkdown", () => {
   });
 
   it("supports markdown syntax inside fenced containers", () => {
-    const parsed = parseDeckMarkdown(`---\nlayout: two-column\n---\n# Compare\n\n::: column\n- item one\n- item two\n:::\n\n::: column\n**bold**\n:::`);
+    const parsed = parseDeckMarkdown(`---\nlayout: two-column\n---\n# Compare\n\n::: leftColumn\n- item one\n- item two\n:::\n\n::: rightColumn\n**bold**\n:::`);
 
     expect(parsed.slides[0].containers).toHaveLength(2);
     expect(parsed.slides[0].containers[0].markdown).toContain("- item one");
-    expect(parsed.slides[0].warnings).toHaveLength(0);
+    expect(parsed.slides[0].diagnostics).toHaveLength(0);
   });
 
   it("warns when two-column has too many columns", () => {
-    const parsed = parseDeckMarkdown(`---\nlayout: two-column\n---\n# Compare\n\n::: column\nA\n:::\n::: column\nB\n:::\n::: column\nC\n:::`);
+    const parsed = parseDeckMarkdown(`---\nlayout: two-column\n---\n# Compare\n\n::: leftColumn\nA\n:::\n::: leftColumn\nB\n:::\n::: rightColumn\nC\n:::`);
 
     expect(parsed.slides[0].containers).toHaveLength(2);
-    expect(parsed.slides[0].warnings.join(" ")).toContain("Extra columns are ignored");
+    expect(parsed.slides[0].diagnostics.map((diagnostic) => diagnostic.message).join(" ")).toContain(
+      "Extra leftColumns are ignored"
+    );
   });
 
   it("ignores stray separator before frontmatter", () => {
@@ -54,10 +106,10 @@ describe("parseDeckMarkdown", () => {
 
   it("warns when nested fenced containers are used", () => {
     const parsed = parseDeckMarkdown(
-      `---\nlayout: two-column\n---\n::: column\nOuter\n::: column\nInner\n:::\n:::`
+      `---\nlayout: two-column\n---\n::: leftColumn\nOuter\n::: leftColumn\nInner\n:::\n:::`
     );
 
-    expect(parsed.slides[0].warnings.join(" ")).toContain(
+    expect(parsed.slides[0].diagnostics.map((diagnostic) => diagnostic.message).join(" ")).toContain(
       "Nested fenced containers are not supported in v1."
     );
   });
@@ -65,7 +117,7 @@ describe("parseDeckMarkdown", () => {
   it("warns when closing fenced container has no opening tag", () => {
     const parsed = parseDeckMarkdown(`---\nlayout: bullet-list\n---\n# Intro\n\n:::`);
 
-    expect(parsed.slides[0].warnings.join(" ")).toContain(
+    expect(parsed.slides[0].diagnostics.map((diagnostic) => diagnostic.message).join(" ")).toContain(
       "Found closing fenced container without opening tag."
     );
   });
@@ -75,7 +127,7 @@ describe("parseDeckMarkdown", () => {
       `---\nlayout: bullet-list\n---\n# Intro\n\n1. First\n2. Second\n\n> Quote\n\n\`\`\`ts\nconsole.log('x')\n\`\`\``
     );
 
-    expect(parsed.slides[0].warnings).toHaveLength(0);
+    expect(parsed.slides[0].diagnostics).toHaveLength(0);
     expect(parsed.slides[0].title).toBe("Intro");
   });
 

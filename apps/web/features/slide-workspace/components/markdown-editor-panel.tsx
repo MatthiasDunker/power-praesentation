@@ -1,10 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { parseDeckMarkdown } from "@power/shared";
+import type { SlideDiagnostic } from "@power/contracts";
+import {
+  parseSingleSlideMarkdown,
+  splitDeckMarkdownForEditingDetailed,
+} from "@power/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DownloadIcon } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { DownloadIcon, OctagonX, TriangleAlert } from "lucide-react";
 
 interface MarkdownEditorPanelProps {
   markdown: string;
@@ -17,6 +26,7 @@ interface MarkdownEditorPanelProps {
 interface SlideEditorEntry {
   id: string;
   markdown: string;
+  diagnostics: SlideDiagnostic[];
 }
 
 const separator = "\n\n---\n\n";
@@ -35,47 +45,41 @@ export function MarkdownEditorPanel({
   selectedSlideId,
   onChange,
   onSelectSlide,
-  onSlideEdit
+  onSlideEdit,
 }: MarkdownEditorPanelProps) {
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const textareaRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
 
   const slideEditors = useMemo<SlideEditorEntry[]>(() => {
-    const parsed = parseDeckMarkdown(markdown);
-    const separatorSegments = markdown.includes(separator)
-      ? markdown.split(separator)
-      : null;
-    const trailingWhitespace = markdown.match(/\s+$/)?.[0] ?? "";
+    const segments = splitDeckMarkdownForEditingDetailed(markdown);
 
-    if (parsed.slides.length === 0) {
+    if (segments.length === 0) {
       return [
         {
           id: "slide-1",
-          markdown
-        }
+          markdown,
+          diagnostics: [],
+        },
       ];
     }
 
-    // Preserve per-slide trailing whitespace/newlines while users edit.
-    // This works for the editor's own joined format and avoids losing Enter presses.
-    if (separatorSegments && separatorSegments.length === parsed.slides.length) {
-      return parsed.slides.map((slide, index) => ({
-        id: slide.id,
-        markdown: separatorSegments[index] ?? slide.rawMarkdown
-      }));
-    }
+    return segments.map((segment, index) => {
+      const slideId = `slide-${index + 1}`;
+      const parseResult = parseSingleSlideMarkdown(segment.markdown, {
+        id: slideId,
+        recoveredBoundary: segment.recoveredBoundary,
+      });
 
-    return parsed.slides.map((slide, index) => ({
-      id: slide.id,
-      markdown:
-        index === parsed.slides.length - 1
-          ? `${slide.rawMarkdown}${trailingWhitespace}`
-          : slide.rawMarkdown
-    }));
+      return {
+        id: slideId,
+        markdown: segment.markdown,
+        diagnostics: parseResult.diagnostics,
+      };
+    });
   }, [markdown]);
   const slideStructureKey = useMemo(
     () => slideEditors.map((slide) => slide.id).join("|"),
-    [slideEditors]
+    [slideEditors],
   );
 
   useEffect(() => {
@@ -102,7 +106,10 @@ export function MarkdownEditorPanel({
     const containerRect = container.getBoundingClientRect();
     const editorRect = selectedEditor.getBoundingClientRect();
     const editorTop = editorRect.top - containerRect.top + container.scrollTop;
-    const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+    const maxScrollTop = Math.max(
+      0,
+      container.scrollHeight - container.clientHeight,
+    );
     const shouldCenter = editorRect.height <= container.clientHeight;
     const rawTarget = shouldCenter
       ? editorTop - (container.clientHeight - editorRect.height) / 2
@@ -113,7 +120,11 @@ export function MarkdownEditorPanel({
 
   const handleSlideChange = (slideId: string, nextSlideMarkdown: string) => {
     const nextMarkdown = slideEditors
-      .map((slide) => (slide.id === slideId ? { ...slide, markdown: nextSlideMarkdown } : slide))
+      .map((slide) =>
+        slide.id === slideId
+          ? { ...slide, markdown: nextSlideMarkdown }
+          : slide,
+      )
       .map((slide) => slide.markdown)
       .join(separator);
 
@@ -159,7 +170,15 @@ export function MarkdownEditorPanel({
           role="group"
         >
           {slideEditors.map((slide, index) => {
-            const isActive = selectedSlideId ? selectedSlideId === slide.id : index === 0;
+            const isActive = selectedSlideId
+              ? selectedSlideId === slide.id
+              : index === 0;
+            const warningDiagnostics = slide.diagnostics.filter(
+              (diagnostic) => diagnostic.severity === "warning",
+            );
+            const errorDiagnostics = slide.diagnostics.filter(
+              (diagnostic) => diagnostic.severity === "error",
+            );
 
             return (
               <div
@@ -167,6 +186,71 @@ export function MarkdownEditorPanel({
                 data-active={isActive ? "true" : "false"}
                 key={slide.id}
               >
+                <div className="deck-slide-diagnostics">
+                  {(warningDiagnostics.length > 0 ||
+                    errorDiagnostics.length > 0) && (
+                    <div className="relative flex justify-end gap-0.5">
+                      {warningDiagnostics.length > 0 ? (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              aria-label={`Show warning diagnostics for slide ${index + 1}`}
+                              className="deck-diagnostic-button deck-diagnostic-warning"
+                              type="button"
+                            >
+                              <TriangleAlert className="size-3.5" />
+                              <span>{warningDiagnostics.length}</span>
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-96">
+                            <p className="mb-2 text-sm font-semibold">
+                              Warnings
+                            </p>
+                            <ul className="space-y-1 text-xs leading-5">
+                              {warningDiagnostics.map(
+                                (diagnostic, diagnosticIndex) => (
+                                  <li
+                                    key={`warning-${slide.id}-${diagnosticIndex}`}
+                                  >
+                                    {diagnostic.message}
+                                  </li>
+                                ),
+                              )}
+                            </ul>
+                          </PopoverContent>
+                        </Popover>
+                      ) : null}
+                      {errorDiagnostics.length > 0 ? (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              aria-label={`Show error diagnostics for slide ${index + 1}`}
+                              className="deck-diagnostic-button deck-diagnostic-error"
+                              type="button"
+                            >
+                              <OctagonX className="size-3.5" />
+                              <span>{errorDiagnostics.length}</span>
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-96">
+                            <p className="mb-2 text-sm font-semibold">Errors</p>
+                            <ul className="space-y-1 text-xs leading-5">
+                              {errorDiagnostics.map(
+                                (diagnostic, diagnosticIndex) => (
+                                  <li
+                                    key={`error-${slide.id}-${diagnosticIndex}`}
+                                  >
+                                    {diagnostic.message}
+                                  </li>
+                                ),
+                              )}
+                            </ul>
+                          </PopoverContent>
+                        </Popover>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
                 <textarea
                   aria-label={`Deck markdown for slide ${index + 1}`}
                   className="deck-slide-textarea block w-full border-0 bg-transparent px-3 py-2 font-mono text-xs leading-6 shadow-none focus-visible:outline-none"
@@ -174,6 +258,7 @@ export function MarkdownEditorPanel({
                   onChange={(event) => {
                     resizeTextarea(event.target);
                     handleSlideChange(slide.id, event.target.value);
+                    onSlideEdit?.(slide.id);
                   }}
                   onFocus={() => onSelectSlide(slide.id)}
                   ref={(node) => {

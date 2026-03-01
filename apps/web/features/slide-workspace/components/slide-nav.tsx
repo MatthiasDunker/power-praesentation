@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SlideDocument } from "@power/contracts";
 import { SlideRenderer } from "@power/ui";
 import { toPng } from "html-to-image";
+import { OctagonX, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -54,7 +55,7 @@ function createFingerprint(slide: SlideDocument): string {
     layout: slide.layout,
     rawMarkdown: slide.rawMarkdown,
     containers: slide.containers,
-    warnings: slide.warnings,
+    diagnostics: slide.diagnostics ?? []
   });
 }
 
@@ -352,6 +353,13 @@ export function SlideNav({
             const isLive = liveSlideId === slide.id;
             const mode = isLive ? "live" : bitmap ? "bitmap" : "pending";
             const isSelected = slide.id === selectedSlideId;
+            const slideDiagnostics = slide.diagnostics ?? [];
+            const warningCount = slideDiagnostics.filter(
+              (diagnostic) => diagnostic.severity === "warning"
+            ).length;
+            const errorCount = slideDiagnostics.filter(
+              (diagnostic) => diagnostic.severity === "error"
+            ).length;
             const selectedButtonStyle = isSelected
               ? {
                   backgroundColor: "Highlight",
@@ -425,10 +433,24 @@ export function SlideNav({
                   <span className="block w-full truncate text-xs">
                     {titleFromMarkdown(slide.rawMarkdown)}
                   </span>
-                  {slide.warnings.length > 0 ? (
-                    <em className="text-xs not-italic">
-                      {slide.warnings.length} warnings
-                    </em>
+                  {warningCount > 0 || errorCount > 0 ? (
+                    <span
+                      className="mt-0.5 flex items-center gap-2 text-[11px]"
+                      data-testid={`slide-diagnostics-${slide.id}`}
+                    >
+                      {warningCount > 0 ? (
+                        <span className="inline-flex items-center gap-1">
+                          <TriangleAlert className="size-3 text-amber-500" />
+                          <span>{warningCount}</span>
+                        </span>
+                      ) : null}
+                      {errorCount > 0 ? (
+                        <span className="inline-flex items-center gap-1">
+                          <OctagonX className="size-3 text-red-600" />
+                          <span>{errorCount}</span>
+                        </span>
+                      ) : null}
+                    </span>
                   ) : null}
                 </span>
               </Button>

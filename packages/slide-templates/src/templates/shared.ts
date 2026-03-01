@@ -5,8 +5,10 @@ export interface MarkdownTemplateProps {
 }
 
 export interface TwoColumnTemplateProps {
-  leftMarkdown: string;
-  rightMarkdown: string;
+  title: string;
+  lead?: string;
+  leftColumn: string;
+  rightColumn: string;
 }
 
 export const baseTemplateRootClassName =
@@ -18,22 +20,6 @@ export const markdownTemplateDecoder: SlideTemplateDecoder<MarkdownTemplateProps
     fields: {
       markdown: {
         sources: [{ kind: "contentMarkdown" }],
-        default: ""
-      }
-    }
-  }
-};
-
-export const twoColumnTemplateDecoder: SlideTemplateDecoder<TwoColumnTemplateProps> = {
-  kind: "schema",
-  schema: {
-    fields: {
-      leftMarkdown: {
-        sources: [{ kind: "container", containerKind: "column", index: 0 }],
-        default: ""
-      },
-      rightMarkdown: {
-        sources: [{ kind: "container", containerKind: "column", index: 1 }],
         default: ""
       }
     }

@@ -1,4 +1,4 @@
-import type { SlideDocument, SlideLayoutId } from "@power/contracts";
+import type { SlideDiagnostic, SlideDocument, SlideLayoutId } from "@power/contracts";
 import { parseFencedContainers } from "./fenced-containers";
 import { parseFrontmatter } from "./frontmatter";
 import { parseMarkdownAst } from "./markdown-ast";
@@ -13,7 +13,7 @@ interface SlideAstInputFromMarkdownOptions {
 
 export interface SlideAstInputFromMarkdownResult {
   input: SlideAstInput;
-  warnings: string[];
+  diagnostics: SlideDiagnostic[];
 }
 
 export function createSlideAstInputFromMarkdown({
@@ -43,7 +43,7 @@ export function createSlideAstInputFromMarkdown({
       ast: parseMarkdownAst(containerParse.contentMarkdown),
       containers: containerParse.containers
     },
-    warnings: containerParse.warnings
+    diagnostics: containerParse.diagnostics
   };
 }
 

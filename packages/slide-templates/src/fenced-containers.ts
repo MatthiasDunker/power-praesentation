@@ -1,3 +1,4 @@
+import type { SlideDiagnostic } from "@power/contracts";
 import { parseMarkdownAst } from "./markdown-ast";
 import { toLines } from "./frontmatter";
 import type { SlideAstContainerNode } from "./types";
@@ -11,13 +12,13 @@ interface ActiveContainer {
 export interface ParseFencedContainersResult {
   containers: SlideAstContainerNode[];
   contentMarkdown: string;
-  warnings: string[];
+  diagnostics: SlideDiagnostic[];
 }
 
 export function parseFencedContainers(markdown: string): ParseFencedContainersResult {
   const lines = toLines(markdown);
   const containers: SlideAstContainerNode[] = [];
-  const warnings: string[] = [];
+  const diagnostics: SlideDiagnostic[] = [];
   const contentLines: string[] = [];
 
   let activeContainer: ActiveContainer | null = null;
@@ -30,7 +31,11 @@ export function parseFencedContainers(markdown: string): ParseFencedContainersRe
 
     if (openMatch) {
       if (activeContainer) {
-        warnings.push("Nested fenced containers are not supported in v1.");
+        diagnostics.push({
+          severity: "warning",
+          message: "Nested fenced containers are not supported in v1.",
+          code: "nested_fenced_container"
+        });
         activeContainer.lines.push(line);
         continue;
       }
@@ -45,7 +50,11 @@ export function parseFencedContainers(markdown: string): ParseFencedContainersRe
 
     if (isClose) {
       if (!activeContainer) {
-        warnings.push("Found closing fenced container without opening tag.");
+        diagnostics.push({
+          severity: "warning",
+          message: "Found closing fenced container without opening tag.",
+          code: "orphan_container_close"
+        });
         continue;
       }
 
@@ -71,7 +80,12 @@ export function parseFencedContainers(markdown: string): ParseFencedContainersRe
   }
 
   if (activeContainer) {
-    warnings.push(`Unclosed fenced container '${activeContainer.kind}'.`);
+    diagnostics.push({
+      severity: "warning",
+      message: `Unclosed fenced container '${activeContainer.kind}'.`,
+      code: "unclosed_fenced_container",
+      field: activeContainer.kind
+    });
     const containerMarkdown = activeContainer.lines.join("\n").trim();
     containers.push({
       type: "fenced_container",
@@ -86,6 +100,6 @@ export function parseFencedContainers(markdown: string): ParseFencedContainersRe
   return {
     containers,
     contentMarkdown: contentLines.join("\n").trim(),
-    warnings
+    diagnostics
   };
 }

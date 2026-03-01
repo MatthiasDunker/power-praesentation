@@ -12,7 +12,7 @@ function titleHeroSlide(index: number) {
     layout: "title-hero" as const,
     rawMarkdown: `---\nlayout: title-hero\n---\n# Slide ${index}\n\nBody ${index}`,
     containers: [],
-    warnings: []
+    diagnostics: []
   };
 }
 
@@ -30,22 +30,22 @@ test("generates deck, opens workspace, supports markdown edits", async ({ page }
           layout: "title-hero",
           rawMarkdown: "---\nlayout: title-hero\n---\n# Intro\n\nHello",
           containers: [],
-          warnings: []
+          diagnostics: []
         },
         {
           id: "slide-2",
           layout: "two-column",
           rawMarkdown:
-            "---\nlayout: two-column\n---\n# Compare\n\n::: column\nLeft\n:::\n\n::: column\nRight\n:::",
+            "---\nlayout: two-column\n---\n# Compare\n\n::: leftColumn\nLeft\n:::\n\n::: rightColumn\nRight\n:::",
           containers: [
-            { kind: "column", markdown: "Left" },
-            { kind: "column", markdown: "Right" }
+            { kind: "leftColumn", markdown: "Left" },
+            { kind: "rightColumn", markdown: "Right" }
           ],
-          warnings: []
+          diagnostics: []
         }
       ],
       fullMarkdown:
-        "---\nlayout: title-hero\n---\n# Intro\n\nHello\n\n---\n\n---\nlayout: two-column\n---\n# Compare\n\n::: column\nLeft\n:::\n\n::: column\nRight\n:::",
+        "---\nlayout: title-hero\n---\n# Intro\n\nHello\n\n---\n\n---\nlayout: two-column\n---\n# Compare\n\n::: leftColumn\nLeft\n:::\n\n::: rightColumn\nRight\n:::",
       inferredContext: {
         audience: "exec",
         tone: "clear",
@@ -76,7 +76,7 @@ test("generates deck, opens workspace, supports markdown edits", async ({ page }
           layout: "title-hero",
           rawMarkdown: "---\nlayout: title-hero\n---\n# Intro\n\nHello",
           containers: [],
-          warnings: []
+          diagnostics: []
         }
       }),
       sseEvent({ type: "task_completed", taskId: "compose_slides", message: "Done" }),
@@ -207,4 +207,180 @@ test("clicking slide nav scrolls markdown editor to selected slide", async ({ pa
   await expect
     .poll(async () => editorContainer.evaluate((node) => node.scrollTop))
     .toBeGreaterThan(topBefore);
+});
+
+test("shows warning and error diagnostics in markdown editor popovers and nav icons", async ({
+  page
+}) => {
+  await page.route("**/api/decks/generate", async (route) => {
+    const deck = {
+      deckId: "deck-diagnostics-e2e",
+      slides: [
+        {
+          id: "slide-1",
+          layout: "title-hero",
+          rawMarkdown: "---\nlayout: title-hero\n---\n# Diagnostics",
+          containers: [],
+          diagnostics: [
+            {
+              severity: "warning",
+              message: "Layout 'title-hero' could not resolve required field 'text'."
+            },
+            {
+              severity: "error",
+              message: "Layout 'title-hero' could not resolve required field 'title'."
+            }
+          ]
+        }
+      ],
+      fullMarkdown: "---\nlayout: title-hero\n---\n# Diagnostics",
+      inferredContext: {
+        audience: "exec",
+        tone: "clear",
+        language: "en",
+        speechLevel: "clear",
+        objective: "inform"
+      },
+      ruleset: {
+        listSentenceSchema: "start with verb",
+        titleStyle: "short",
+        maxBulletsPerSlide: 5,
+        constraints: []
+      },
+      outline: [{ id: "1", title: "Diagnostics", summary: "Validation", intent: "diagnostics" }]
+    };
+
+    const body = [
+      sseEvent({ type: "task_started", taskId: "ingest_input", message: "Collecting" }),
+      sseEvent({ type: "task_completed", taskId: "ingest_input", message: "Done" }),
+      sseEvent({ type: "task_started", taskId: "compose_slides", message: "Composing" }),
+      sseEvent({ type: "task_completed", taskId: "compose_slides", message: "Done" }),
+      sseEvent({ type: "deck_completed", deck })
+    ].join("");
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        "content-type": "text/event-stream"
+      },
+      body
+    });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Prompt").fill("Create a diagnostics deck");
+  await page.getByRole("button", { name: "Generate deck" }).click();
+
+  await expect(page.getByText("Generated 1 slides", { exact: false })).toBeVisible();
+  await expect(page.getByLabel("Show warning diagnostics for slide 1")).toBeVisible();
+  await expect(page.getByLabel("Show error diagnostics for slide 1")).toBeVisible();
+  await expect(page.getByTestId("slide-diagnostics-slide-1")).toContainText("1");
+
+  await page.getByLabel("Show warning diagnostics for slide 1").click();
+  await expect(
+    page.getByText("Layout 'title-hero' could not resolve required field 'text'.")
+  ).toBeVisible();
+
+  await page.getByLabel("Show error diagnostics for slide 1").click();
+  await expect(
+    page.getByText("Layout 'title-hero' could not resolve required field 'title'.")
+  ).toBeVisible();
+});
+
+test("keeps slide blocks stable while a fenced container closing tag is temporarily missing", async ({
+  page
+}) => {
+  await page.route("**/api/decks/generate", async (route) => {
+    const deck = {
+      deckId: "deck-unclosed-container",
+      slides: [
+        {
+          id: "slide-1",
+          layout: "two-column",
+          rawMarkdown:
+            "---\nlayout: two-column\n---\n# Compare\n\n::: leftColumn\nLeft\n:::\n\n::: rightColumn\nRight\n:::",
+          containers: [
+            { kind: "leftColumn", markdown: "Left" },
+            { kind: "rightColumn", markdown: "Right" }
+          ],
+          diagnostics: []
+        },
+        {
+          id: "slide-2",
+          layout: "title-hero",
+          rawMarkdown: "---\nlayout: title-hero\n---\n# Follow-up\n\nStable slide",
+          containers: [],
+          diagnostics: []
+        }
+      ],
+      fullMarkdown:
+        "---\nlayout: two-column\n---\n# Compare\n\n::: leftColumn\nLeft\n:::\n\n::: rightColumn\nRight\n:::\n\n---\n\n---\nlayout: title-hero\n---\n# Follow-up\n\nStable slide",
+      inferredContext: {
+        audience: "exec",
+        tone: "clear",
+        language: "en",
+        speechLevel: "clear",
+        objective: "inform"
+      },
+      ruleset: {
+        listSentenceSchema: "start with verb",
+        titleStyle: "short",
+        maxBulletsPerSlide: 5,
+        constraints: []
+      },
+      outline: [
+        { id: "1", title: "Compare", summary: "Left and right", intent: "compare" },
+        { id: "2", title: "Follow-up", summary: "Stable", intent: "detail" }
+      ]
+    };
+
+    const body = [
+      sseEvent({ type: "task_started", taskId: "ingest_input", message: "Collecting" }),
+      sseEvent({ type: "task_completed", taskId: "ingest_input", message: "Done" }),
+      sseEvent({ type: "task_started", taskId: "compose_slides", message: "Composing" }),
+      sseEvent({ type: "task_completed", taskId: "compose_slides", message: "Done" }),
+      sseEvent({ type: "deck_completed", deck })
+    ].join("");
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        "content-type": "text/event-stream"
+      },
+      body
+    });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Prompt").fill("Create a deck with two-column content");
+  await page.getByRole("button", { name: "Generate deck" }).click();
+
+  await expect(page.getByText("Generated 2 slides", { exact: false })).toBeVisible();
+
+  const firstSlideEditor = page.getByLabel("Deck markdown for slide 1");
+  const secondSlideEditor = page.getByLabel("Deck markdown for slide 2");
+
+  await expect(firstSlideEditor).toBeVisible();
+  await expect(secondSlideEditor).toBeVisible();
+  await expect(secondSlideEditor).toHaveValue(/layout: title-hero/);
+
+  await firstSlideEditor.fill(
+    "---\nlayout: two-column\n---\n# Compare\n\n::: leftColumn\nLeft side stays open"
+  );
+
+  await expect(secondSlideEditor).toBeVisible();
+  await expect(secondSlideEditor).toHaveValue(/layout: title-hero/);
+  await expect(page.getByRole("button", { name: /Slide 2/i })).toBeVisible();
+
+  const warningButton = page.getByLabel("Show warning diagnostics for slide 1");
+  await expect(warningButton).toBeVisible();
+  await warningButton.click();
+  await expect(
+    page.getByText("Recovered slide boundary at '---' while fenced container was still open.")
+  ).toBeVisible();
+
+  await firstSlideEditor.fill(
+    "---\nlayout: two-column\n---\n# Compare\n\n::: leftColumn\nLeft\n:::\n\n::: rightColumn\nRight\n:::"
+  );
+  await expect(warningButton).toBeHidden();
 });

@@ -1,4 +1,4 @@
-import type { SlideDocument, SlideLayoutId } from "@power/contracts";
+import type { SlideDiagnostic, SlideDocument, SlideLayoutId } from "@power/contracts";
 import {
   createCoreTemplateRegistry,
   createSlideAstInputFromMarkdown,
@@ -22,22 +22,197 @@ export interface ParsedSlide {
   resolvedFrontmatter: Record<string, string>;
   resolvedPartials: Record<string, unknown>;
   containers: Array<{ kind: string; markdown: string }>;
-  warnings: string[];
+  diagnostics: SlideDiagnostic[];
 }
 
 export interface ParsedDeck {
   slides: ParsedSlide[];
   normalizedMarkdown: string;
-  warnings: string[];
+  diagnostics: SlideDiagnostic[];
 }
 
 export interface ParseDeckMarkdownOptions {
   templateRegistry?: SlideTemplateRegistry;
 }
 
+export interface EditableSlideSegment {
+  markdown: string;
+  recoveredBoundary: boolean;
+}
+
+export interface ParseSingleSlideMarkdownOptions extends ParseDeckMarkdownOptions {
+  id?: string;
+  recoveredBoundary?: boolean;
+}
+
+export interface ParseSingleSlideMarkdownResult {
+  slide: ParsedSlide | null;
+  diagnostics: SlideDiagnostic[];
+}
+
 const defaultLayout: SlideLayoutId = "bullet-list";
 const fallbackLayout: SlideLayoutId = "bullet-list";
 const defaultTemplateRegistry = createCoreTemplateRegistry();
+const canonicalEditorSeparator = "\n\n---\n\n";
+const tolerantBoundaryRecoveryMessage =
+  "Recovered slide boundary at '---' while fenced container was still open.";
+
+interface ParsedDeckSegment {
+  segment: string;
+  parsedFrontmatter: ReturnType<typeof parseFrontmatter>;
+}
+
+function isContainerOpenLine(trimmedLine: string): boolean {
+  return /^:::\s*[a-zA-Z0-9_-]+\s*$/.test(trimmedLine);
+}
+
+function isContainerCloseLine(trimmedLine: string): boolean {
+  return trimmedLine === ":::";
+}
+
+function hasUnclosedFencedContainer(markdown: string): boolean {
+  const lines = toLines(markdown);
+  let depth = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (isContainerOpenLine(trimmed)) {
+      depth += 1;
+      continue;
+    }
+
+    if (isContainerCloseLine(trimmed) && depth > 0) {
+      depth -= 1;
+    }
+  }
+
+  return depth > 0;
+}
+
+function splitDeckMarkdownForEditingFallback(markdown: string): EditableSlideSegment[] {
+  const lines = toLines(markdown);
+  const segments: EditableSlideSegment[] = [];
+  let currentLines: string[] = [];
+  let insideFrontmatter = false;
+  let containerDepth = 0;
+
+  const pushCurrent = () => {
+    const text = currentLines.join("\n");
+    if (text.trim().length > 0 && text.trim() !== "---") {
+      segments.push({
+        markdown: text,
+        recoveredBoundary: false
+      });
+    }
+    currentLines = [];
+    containerDepth = 0;
+  };
+
+  const markBoundaryRecovery = () => {
+    if (segments.length === 0 && currentLines.length === 0) {
+      return;
+    }
+
+    if (containerDepth <= 0) {
+      return;
+    }
+
+    if (segments.length > 0 && currentLines.length === 0) {
+      segments[segments.length - 1].recoveredBoundary = true;
+      return;
+    }
+
+    const segmentMarkdown = currentLines.join("\n");
+    if (segmentMarkdown.trim().length === 0 || segmentMarkdown.trim() === "---") {
+      return;
+    }
+
+    segments.push({
+      markdown: segmentMarkdown,
+      recoveredBoundary: true
+    });
+    currentLines = [];
+    containerDepth = 0;
+  };
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const trimmed = line.trim();
+    const nextLine = lines[index + 1]?.trim() ?? "";
+    const looksLikeFrontmatterStart = nextLine.includes(":");
+
+    if (trimmed === "---") {
+      if (insideFrontmatter) {
+        insideFrontmatter = false;
+        currentLines.push(line);
+        continue;
+      }
+
+      if (currentLines.length === 0) {
+        if (looksLikeFrontmatterStart) {
+          insideFrontmatter = true;
+          currentLines.push(line);
+        }
+        continue;
+      }
+
+      if (looksLikeFrontmatterStart) {
+        if (containerDepth > 0) {
+          markBoundaryRecovery();
+        } else {
+          pushCurrent();
+        }
+        insideFrontmatter = true;
+        currentLines.push(line);
+        continue;
+      }
+
+      if (containerDepth > 0) {
+        markBoundaryRecovery();
+      } else {
+        pushCurrent();
+      }
+      continue;
+    }
+
+    if (!insideFrontmatter) {
+      if (isContainerOpenLine(trimmed)) {
+        containerDepth += 1;
+      } else if (isContainerCloseLine(trimmed) && containerDepth > 0) {
+        containerDepth -= 1;
+      }
+    }
+
+    currentLines.push(line);
+  }
+
+  pushCurrent();
+  return segments;
+}
+
+export function splitDeckMarkdownForEditingDetailed(markdown: string): EditableSlideSegment[] {
+  if (!markdown.trim()) {
+    return [];
+  }
+
+  if (markdown.includes(canonicalEditorSeparator)) {
+    const segments = markdown.split(canonicalEditorSeparator);
+    return segments.map((segment, index) => ({
+      markdown: segment,
+      recoveredBoundary:
+        index < segments.length - 1 && hasUnclosedFencedContainer(segment)
+    }));
+  }
+
+  return splitDeckMarkdownForEditingFallback(markdown);
+}
+
+export function splitDeckMarkdownForEditing(markdown: string): string[] {
+  return splitDeckMarkdownForEditingDetailed(markdown).map(
+    (segment) => segment.markdown
+  );
+}
 
 function extractTopLevelSegments(input: string): string[] {
   const lines = toLines(input);
@@ -205,27 +380,12 @@ function clonePartialValue(value: unknown): unknown {
   return value;
 }
 
-export function parseDeckMarkdown(
-  input: string,
-  options: ParseDeckMarkdownOptions = {}
+function parseSlidesFromSegments(
+  parsedSegments: ParsedDeckSegment[],
+  templateRegistry: SlideTemplateRegistry
 ): ParsedDeck {
-  const source = input.trim();
-  if (!source) {
-    return {
-      slides: [],
-      normalizedMarkdown: "",
-      warnings: []
-    };
-  }
-
-  const templateRegistry = options.templateRegistry ?? defaultTemplateRegistry;
   const fallbackTemplate = templateRegistry[fallbackLayout];
-  const segments = extractTopLevelSegments(source);
-  const deckWarnings: string[] = [];
-  const parsedSegments = segments.map((segment) => ({
-    segment,
-    parsedFrontmatter: parseFrontmatter(segment)
-  }));
+  const deckDiagnostics: SlideDiagnostic[] = [];
   const firstSlideFooter = parseFooterDirective(
     parsedSegments[0]?.parsedFrontmatter.frontmatterData.footer
   );
@@ -268,21 +428,29 @@ export function parseDeckMarkdown(
     const registryEntry = templateRegistry[layout];
     const decodeTarget = registryEntry ?? fallbackTemplate;
 
-    const warnings = [...astInputResult.warnings];
+    const diagnostics = [...astInputResult.diagnostics];
 
     if (!registryEntry && fallbackTemplate) {
-      warnings.push(
-        `Unknown layout '${layout}'. Falling back to '${fallbackLayout}' template validation.`
-      );
+      diagnostics.push({
+        severity: "warning",
+        message: `Unknown layout '${layout}'. Falling back to '${fallbackLayout}' template validation.`,
+        code: "unknown_layout_fallback",
+        field: "layout"
+      });
     }
 
     if (decodeTarget) {
       const decodeResult = decodeSlideTemplate(decodeTarget, astInputResult.input);
-      warnings.push(...decodeResult.warnings);
+      diagnostics.push(...decodeResult.diagnostics);
     }
 
-    if (warnings.length > 0) {
-      deckWarnings.push(`Slide ${index + 1}: ${warnings.join(" ")}`);
+    if (diagnostics.length > 0) {
+      deckDiagnostics.push(
+        ...diagnostics.map((diagnostic) => ({
+          ...diagnostic,
+          message: `Slide ${index + 1}: ${diagnostic.message}`
+        }))
+      );
     }
 
     return {
@@ -299,7 +467,7 @@ export function parseDeckMarkdown(
         astInputResult.input.containers,
         registryEntry
       ),
-      warnings
+      diagnostics
     } satisfies ParsedSlide;
   });
 
@@ -310,7 +478,80 @@ export function parseDeckMarkdown(
   return {
     slides,
     normalizedMarkdown,
-    warnings: deckWarnings
+    diagnostics: deckDiagnostics
+  };
+}
+
+export function parseDeckMarkdown(
+  input: string,
+  options: ParseDeckMarkdownOptions = {}
+): ParsedDeck {
+  const source = input.trim();
+  if (!source) {
+    return {
+      slides: [],
+      normalizedMarkdown: "",
+      diagnostics: []
+    };
+  }
+
+  const templateRegistry = options.templateRegistry ?? defaultTemplateRegistry;
+  const segments = extractTopLevelSegments(source);
+  const parsedSegments: ParsedDeckSegment[] = segments.map((segment) => ({
+    segment,
+    parsedFrontmatter: parseFrontmatter(segment)
+  }));
+  return parseSlidesFromSegments(parsedSegments, templateRegistry);
+}
+
+export function parseSingleSlideMarkdown(
+  markdown: string,
+  options: ParseSingleSlideMarkdownOptions = {}
+): ParseSingleSlideMarkdownResult {
+  const source = markdown.trim();
+  if (!source) {
+    return {
+      slide: null,
+      diagnostics: []
+    };
+  }
+
+  const templateRegistry = options.templateRegistry ?? defaultTemplateRegistry;
+  const parsedDeck = parseSlidesFromSegments(
+    [
+      {
+        segment: source,
+        parsedFrontmatter: parseFrontmatter(source)
+      }
+    ],
+    templateRegistry
+  );
+  const baseSlide = parsedDeck.slides[0];
+  if (!baseSlide) {
+    return {
+      slide: null,
+      diagnostics: []
+    };
+  }
+
+  const diagnostics = [...baseSlide.diagnostics];
+  if (options.recoveredBoundary) {
+    diagnostics.push({
+      severity: "warning",
+      message: tolerantBoundaryRecoveryMessage,
+      code: "tolerant_boundary_recovery"
+    });
+  }
+
+  const slide: ParsedSlide = {
+    ...baseSlide,
+    id: options.id ?? baseSlide.id,
+    diagnostics
+  };
+
+  return {
+    slide,
+    diagnostics
   };
 }
 
@@ -322,6 +563,6 @@ export function toSlideDocuments(parsedDeck: ParsedDeck): SlideDocument[] {
     resolvedFrontmatter: slide.resolvedFrontmatter,
     resolvedPartials: slide.resolvedPartials,
     containers: slide.containers,
-    warnings: slide.warnings
+    diagnostics: slide.diagnostics
   }));
 }

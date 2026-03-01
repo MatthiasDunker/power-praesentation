@@ -5,7 +5,7 @@ layout: two-column
 
 Compare implementation options for the reporting layer.
 
-::: column
+::: leftColumn
 ## Build
 
 - Full control over roadmap
@@ -13,7 +13,7 @@ Compare implementation options for the reporting layer.
 - Higher maintenance cost
 :::
 
-::: column
+::: rightColumn
 ## Buy
 
 - Faster time to value

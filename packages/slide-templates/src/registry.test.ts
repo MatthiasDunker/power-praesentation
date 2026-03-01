@@ -26,7 +26,7 @@ describe("template registry", () => {
           containerRules: [],
           decoder: {
             kind: "custom",
-            decode: () => ({ props: {}, warnings: [] })
+            decode: () => ({ props: {}, diagnostics: [] })
           }
         }
       ],
@@ -36,7 +36,7 @@ describe("template registry", () => {
           containerRules: [],
           decoder: {
             kind: "custom",
-            decode: () => ({ props: { from: "extension" }, warnings: [] })
+            decode: () => ({ props: { from: "extension" }, diagnostics: [] })
           }
         }
       ]

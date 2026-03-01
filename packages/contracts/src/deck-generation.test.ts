@@ -23,7 +23,7 @@ describe("generation stream event schema", () => {
             layout: "title-hero",
             rawMarkdown: "# Hello",
             containers: [],
-            warnings: []
+            diagnostics: []
           }
         ],
         fullMarkdown: "# Hello",
@@ -69,7 +69,7 @@ describe("generation stream event schema", () => {
       layout: "custom/experimental-layout",
       rawMarkdown: "# Hello",
       containers: [],
-      warnings: []
+      diagnostics: []
     });
 
     expect(parsed.success).toBe(true);
@@ -84,7 +84,7 @@ describe("generation stream event schema", () => {
         footer: "Acme Inc. 2026"
       },
       containers: [],
-      warnings: []
+      diagnostics: []
     });
 
     expect(parsed.success).toBe(true);
@@ -101,7 +101,32 @@ describe("generation stream event schema", () => {
         }
       },
       containers: [],
-      warnings: []
+      diagnostics: []
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("accepts structured warning and error diagnostics", () => {
+    const parsed = slideDocumentSchema.safeParse({
+      id: "slide-1",
+      layout: "title-hero",
+      rawMarkdown: "# Hello",
+      containers: [],
+      diagnostics: [
+        {
+          severity: "warning",
+          message: "Missing optional subtitle.",
+          code: "missing_optional_field",
+          field: "subtitle"
+        },
+        {
+          severity: "error",
+          message: "Missing required title.",
+          code: "missing_required_field",
+          field: "title"
+        }
+      ]
     });
 
     expect(parsed.success).toBe(true);

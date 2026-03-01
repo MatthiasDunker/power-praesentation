@@ -1,3 +1,4 @@
+import type { SlideDiagnostic } from "@power/contracts";
 import type {
   SlideAstContainerNode,
   SlideAstInput,
@@ -43,20 +44,20 @@ export function decodeSlideTemplate<TProps>(
   template: SlideTemplateDefinition<TProps>,
   input: SlideAstInput
 ): SlideDecodeResult<TProps> {
-  const warnings = validateContainerRules(template.id, template.containerRules, input.containers);
+  const diagnostics = validateContainerRules(template.id, template.containerRules, input.containers);
 
   if (template.decoder.kind === "custom") {
     const decoded = template.decoder.decode(input);
     return {
       props: decoded.props,
-      warnings: [...warnings, ...decoded.warnings]
+      diagnostics: [...diagnostics, ...decoded.diagnostics]
     };
   }
 
   const decoded = decodeWithSchema(template.id, input, template.decoder.schema);
   return {
     props: decoded.props as TProps,
-    warnings: [...warnings, ...decoded.warnings]
+    diagnostics: [...diagnostics, ...decoded.diagnostics]
   };
 }
 
@@ -66,7 +67,7 @@ function decodeWithSchema(
   schema: SlideDecodeSchema
 ): SlideDecodeResult<Record<string, unknown>> {
   const context = buildDecodeContext(input);
-  const warnings: string[] = [];
+  const diagnostics: SlideDiagnostic[] = [];
   const props: Record<string, unknown> = {};
 
   for (const [fieldName, field] of Object.entries(schema.fields)) {
@@ -77,6 +78,18 @@ function decodeWithSchema(
       if (isResolvedValue(candidate, source)) {
         resolvedValue = candidate;
         break;
+      }
+    }
+
+    if (typeof resolvedValue === "undefined") {
+      const missingPolicy = resolveMissingPolicy(field);
+      if (missingPolicy !== "none") {
+        diagnostics.push({
+          severity: missingPolicy,
+          message: `Layout '${layoutId}' could not resolve required field '${fieldName}'.`,
+          code: "missing_required_field",
+          field: fieldName
+        });
       }
     }
 
@@ -91,25 +104,20 @@ function decodeWithSchema(
       resolvedValue = field.transform(resolvedValue, context);
     }
 
-    if (field.required && typeof resolvedValue === "undefined") {
-      warnings.push(`Layout '${layoutId}' could not resolve required field '${fieldName}'.`);
-      continue;
-    }
-
     if (typeof resolvedValue !== "undefined") {
       props[fieldName] = resolvedValue;
     }
   }
 
-  return { props, warnings };
+  return { props, diagnostics };
 }
 
 function validateContainerRules(
   layoutId: string,
   rules: readonly SlideContainerRule[],
   containers: SlideAstContainerNode[]
-): string[] {
-  const warnings: string[] = [];
+): SlideDiagnostic[] {
+  const diagnostics: SlideDiagnostic[] = [];
 
   for (const rule of rules) {
     const count = containers.filter((container) => container.kind === rule.kind).length;
@@ -117,28 +125,51 @@ function validateContainerRules(
     const max = Math.max(rule.max, min);
 
     if (min === max && count < min) {
-      warnings.push(
-        `Layout '${layoutId}' expects ${min} '::: ${rule.kind}' containers, found ${count}.`
-      );
+      diagnostics.push({
+        severity: "warning",
+        message: `Layout '${layoutId}' expects ${min} '::: ${rule.kind}' containers, found ${count}.`,
+        code: "container_count_mismatch",
+        field: rule.kind
+      });
       continue;
     }
 
     if (count < min) {
-      warnings.push(
-        `Layout '${layoutId}' expects at least ${min} '::: ${rule.kind}' containers, found ${count}.`
-      );
+      diagnostics.push({
+        severity: "warning",
+        message: `Layout '${layoutId}' expects at least ${min} '::: ${rule.kind}' containers, found ${count}.`,
+        code: "container_count_mismatch",
+        field: rule.kind
+      });
       continue;
     }
 
     if (count > max) {
       const pluralKind = toPlural(rule.kind);
-      warnings.push(
-        `Layout '${layoutId}' received more than ${max} ${pluralKind}. Extra ${pluralKind} are ignored.`
-      );
+      diagnostics.push({
+        severity: "warning",
+        message: `Layout '${layoutId}' received more than ${max} ${pluralKind}. Extra ${pluralKind} are ignored.`,
+        code: "container_count_exceeded",
+        field: rule.kind
+      });
     }
   }
 
-  return warnings;
+  return diagnostics;
+}
+
+function resolveMissingPolicy(
+  field: SlideDecodeSchema["fields"][string]
+): "none" | "warning" | "error" {
+  if (field.missingPolicy) {
+    return field.missingPolicy;
+  }
+
+  if (field.required) {
+    return "warning";
+  }
+
+  return "none";
 }
 
 function toPlural(kind: string): string {

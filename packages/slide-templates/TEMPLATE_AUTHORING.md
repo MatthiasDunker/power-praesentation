@@ -31,12 +31,22 @@ Available schema sources include:
 Use `decoder: { kind: "custom", decode }` only when schema sources are not enough.
 
 ## Fenced Containers
-Container rules still define expected container kinds/counts and warnings:
+Container rules still define expected container kinds/counts and diagnostics:
 
-- Example: `::: column` for `two-column`
+- Example: `::: leftColumn` / `::: rightColumn` for `two-column`
 - No nested containers in v1
 
-The decode engine validates counts and emits warnings without blocking rendering.
+The decode engine validates counts and emits warning diagnostics without blocking rendering.
+
+## Missing Field Policy
+Schema fields can control unresolved-value behavior with `missingPolicy`:
+
+- `none` (default)
+- `warning`
+- `error`
+
+`required: true` is supported as a backward-compatible alias for `missingPolicy: "warning"`.
+If both are present, `missingPolicy` takes precedence.
 
 ## Minimal Example
 ```ts

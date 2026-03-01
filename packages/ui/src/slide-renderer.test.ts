@@ -28,7 +28,7 @@ describe("slide renderer registry", () => {
         containerRules: [],
         decoder: {
           kind: "custom",
-          decode: () => ({ props: { markdown: "override" }, warnings: [] })
+          decode: () => ({ props: { markdown: "override" }, diagnostics: [] })
         },
         rootClassName: "override",
         render: () => null
@@ -48,7 +48,7 @@ theme: beresa
 ---
 # Hello`,
       containers: [],
-      warnings: [],
+      diagnostics: [],
     };
 
     const element = SlideRenderer({ slide }) as ReactElement<Record<string, unknown>>;
@@ -67,7 +67,7 @@ theme: theme-esforin
 ---
 # Hello`,
       containers: [],
-      warnings: [],
+      diagnostics: [],
     };
 
     const element = SlideRenderer({ slide }) as ReactElement<Record<string, unknown>>;
@@ -85,7 +85,7 @@ theme: theme-esforin
         containerRules: [],
         decoder: {
           kind: "custom",
-          decode: () => ({ props: {}, warnings: [] })
+          decode: () => ({ props: {}, diagnostics: [] })
         },
         rootClassName: "override",
         render: (_props, slots) => {
@@ -110,7 +110,7 @@ layout: title-hero
         footer: "Acme 2026"
       },
       containers: [],
-      warnings: []
+      diagnostics: []
     };
 
     SlideRenderer({ slide, registry });
@@ -129,7 +129,7 @@ layout: title-hero
         containerRules: [],
         decoder: {
           kind: "custom",
-          decode: () => ({ props: {}, warnings: [] })
+          decode: () => ({ props: {}, diagnostics: [] })
         },
         rootClassName: "override",
         render: (_props, slots) => {
@@ -148,7 +148,7 @@ footer: off
 ---
 # Hello`,
       containers: [],
-      warnings: []
+      diagnostics: []
     };
 
     SlideRenderer({ slide, registry });
@@ -165,7 +165,7 @@ footer: off
         containerRules: [],
         decoder: {
           kind: "custom",
-          decode: () => ({ props: {}, warnings: [] })
+          decode: () => ({ props: {}, diagnostics: [] })
         },
         rootClassName: "override",
         render: (_props, slots) => {
@@ -188,7 +188,7 @@ layout: title-hero
         }
       },
       containers: [],
-      warnings: []
+      diagnostics: []
     };
 
     SlideRenderer({ slide, registry, slideNumber: 2, slideCount: 7 });
@@ -198,5 +198,67 @@ layout: title-hero
     expect(capturedFooter?.props.value).toEqual({
       cols: ["2026-02-28", "", "2/7"]
     });
+  });
+
+  it("renders an error placeholder when slide contains error diagnostics", () => {
+    const slide: SlideDocument = {
+      id: "slide-1",
+      layout: "title-hero",
+      rawMarkdown: `---
+layout: title-hero
+---
+# Broken slide`,
+      containers: [],
+      diagnostics: [
+        {
+          severity: "error",
+          message: "Layout 'title-hero' could not resolve required field 'title'."
+        }
+      ]
+    };
+
+    const element = SlideRenderer({ slide }) as ReactElement<Record<string, unknown>>;
+    const serialized = JSON.stringify(element);
+
+    expect(serialized).toContain("Unable to render:");
+    expect(serialized).toContain("Broken slide");
+    expect(serialized).toContain("could not resolve required field 'title'");
+  });
+
+  it("continues normal render when diagnostics contain warnings only", () => {
+    const registry = createSlideRendererRegistry([
+      {
+        id: "title-hero",
+        containerRules: [],
+        decoder: {
+          kind: "custom",
+          decode: () => ({ props: {}, diagnostics: [] })
+        },
+        rootClassName: "override",
+        render: () => "rendered-template"
+      }
+    ]);
+
+    const slide: SlideDocument = {
+      id: "slide-1",
+      layout: "title-hero",
+      rawMarkdown: `---
+layout: title-hero
+---
+# Hello`,
+      containers: [],
+      diagnostics: [
+        {
+          severity: "warning",
+          message: "Layout 'title-hero' could not resolve required field 'text'."
+        }
+      ]
+    };
+
+    const element = SlideRenderer({ slide, registry }) as ReactElement<Record<string, unknown>>;
+    const serialized = JSON.stringify(element);
+
+    expect(serialized).toContain("rendered-template");
+    expect(serialized).not.toContain("Unable to render");
   });
 });

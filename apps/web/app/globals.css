@@ -176,3 +176,36 @@ body {
   overflow: hidden;
   resize: none;
 }
+
+.deck-slide-diagnostics {
+  position: absolute;
+  right: 4px;
+  top: 3px;
+  z-index: 20;
+  height: 1px;
+}
+
+.deck-diagnostic-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1;
+  color: oklch(0.65 0 0);
+}
+
+.deck-slide-editor[data-active="true"] .deck-diagnostic-warning {
+  border-color: oklch(0.87 0.16 95 / 0.9);
+  background: oklch(0.97 0.04 95);
+  color: oklch(0.5 0.13 95);
+}
+
+.deck-slide-editor[data-active="true"] .deck-diagnostic-error {
+  border-color: oklch(0.75 0.16 25 / 0.9);
+  background: oklch(0.97 0.04 25);
+  color: oklch(0.55 0.17 25);
+}

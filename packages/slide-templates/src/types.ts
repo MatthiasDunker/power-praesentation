@@ -1,4 +1,4 @@
-import type { SlideLayoutId } from "@power/contracts";
+import type { SlideDiagnostic, SlideLayoutId } from "@power/contracts";
 
 export interface MarkdownAstRoot {
   type: string;
@@ -27,7 +27,7 @@ export interface SlideAstInput {
 
 export interface SlideDecodeResult<TProps> {
   props: TProps;
-  warnings: string[];
+  diagnostics: SlideDiagnostic[];
 }
 
 export interface SlideDecodeContext {
@@ -88,6 +88,7 @@ export interface SlideDecodeSchemaField<TValue = unknown> {
   sources: readonly SlideDecodeSource[];
   transform?: (value: unknown, context: SlideDecodeContext) => TValue;
   default?: TValue | ((context: SlideDecodeContext) => TValue);
+  missingPolicy?: "none" | "warning" | "error";
   required?: boolean;
 }
 

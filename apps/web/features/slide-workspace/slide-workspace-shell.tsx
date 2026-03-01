@@ -11,7 +11,12 @@ import type {
   RuleSet,
   SlideDocument,
 } from "@power/contracts";
-import { parseDeckMarkdown, parseFrontmatter, toSlideDocuments } from "@power/shared";
+import {
+  parseDeckMarkdown,
+  parseFrontmatter,
+  splitDeckMarkdownForEditing,
+  toSlideDocuments
+} from "@power/shared";
 import { SlideRuntimeStyleSheet } from "@power/ui";
 import {
   ChatGenerationConversation,
@@ -29,6 +34,7 @@ import { cn } from "@/lib/utils";
 
 const storageKey = "power.deck.current";
 const navSelectionDelayMs = 90;
+const markdownParseDebounceMs = 180;
 
 const taskOrder: GenerationTaskId[] = [
   "ingest_input",
@@ -198,6 +204,17 @@ export function SlideWorkspaceShell() {
   const selectionSignalNonceRef = useRef(0);
   const thumbnailSignalNonceRef = useRef(0);
   const navSelectionTimeoutRef = useRef<number | null>(null);
+  const markdownParseTimeoutRef = useRef<number | null>(null);
+  const deckRef = useRef<DeckDocument | null>(null);
+  const selectedSlideIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    deckRef.current = deck;
+  }, [deck]);
+
+  useEffect(() => {
+    selectedSlideIdRef.current = selectedSlideId;
+  }, [selectedSlideId]);
 
   const emitSelectionSignal = (
     slideId: string,
@@ -285,8 +302,80 @@ export function SlideWorkspaceShell() {
       if (navSelectionTimeoutRef.current !== null) {
         window.clearTimeout(navSelectionTimeoutRef.current);
       }
+      if (markdownParseTimeoutRef.current !== null) {
+        window.clearTimeout(markdownParseTimeoutRef.current);
+      }
     };
   }, []);
+
+  useEffect(() => {
+    if (!deckRef.current) {
+      return;
+    }
+
+    if (markdownParseTimeoutRef.current !== null) {
+      window.clearTimeout(markdownParseTimeoutRef.current);
+    }
+
+    markdownParseTimeoutRef.current = window.setTimeout(() => {
+      markdownParseTimeoutRef.current = null;
+      const activeDeck = deckRef.current;
+      if (!activeDeck) {
+        return;
+      }
+
+      const parsed = parseDeckMarkdown(markdownText);
+      const parsedSlides = toSlideDocuments(parsed);
+      const editorSegments = splitDeckMarkdownForEditing(markdownText);
+
+      if (editorSegments.length !== parsedSlides.length) {
+        return;
+      }
+
+      const remappedSlides = parsedSlides.map((slide, index) => ({
+        ...slide,
+        id: activeDeck.slides[index]?.id ?? slide.id
+      }));
+      const nextDeck: DeckDocument = {
+        ...activeDeck,
+        slides: remappedSlides,
+        fullMarkdown: parsed.normalizedMarkdown
+      };
+
+      setDeck(nextDeck);
+
+      const currentSelectedSlideId = selectedSlideIdRef.current;
+      if (remappedSlides.length === 0) {
+        if (currentSelectedSlideId !== null) {
+          setSelectedSlideId(null);
+        }
+        return;
+      }
+
+      if (
+        currentSelectedSlideId &&
+        remappedSlides.some((slide) => slide.id === currentSelectedSlideId)
+      ) {
+        return;
+      }
+
+      const previousSelectionIndex = activeDeck.slides.findIndex(
+        (slide) => slide.id === currentSelectedSlideId
+      );
+      const fallbackIndex =
+        previousSelectionIndex >= 0
+          ? Math.min(previousSelectionIndex, remappedSlides.length - 1)
+          : 0;
+      setSelectedSlideId(remappedSlides[fallbackIndex]?.id ?? remappedSlides[0]?.id ?? null);
+    }, markdownParseDebounceMs);
+
+    return () => {
+      if (markdownParseTimeoutRef.current !== null) {
+        window.clearTimeout(markdownParseTimeoutRef.current);
+        markdownParseTimeoutRef.current = null;
+      }
+    };
+  }, [markdownText, deck?.deckId]);
 
   const displaySlides = useMemo(() => {
     if (phase === "workspace") {
@@ -389,26 +478,6 @@ export function SlideWorkspaceShell() {
 
   const onMarkdownChange = (nextMarkdown: string) => {
     setMarkdownText(nextMarkdown);
-
-    if (!deck) {
-      return;
-    }
-
-    const parsed = parseDeckMarkdown(nextMarkdown);
-    const slides = toSlideDocuments(parsed);
-    const nextDeck: DeckDocument = {
-      ...deck,
-      slides,
-      fullMarkdown: parsed.normalizedMarkdown,
-    };
-
-    setDeck(nextDeck);
-    if (
-      slides.length > 0 &&
-      !slides.some((slide) => slide.id === selectedSlideId)
-    ) {
-      setSelectedSlideId(slides[0].id);
-    }
   };
 
   return (

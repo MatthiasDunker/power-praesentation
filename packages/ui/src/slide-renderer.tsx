@@ -17,6 +17,19 @@ export interface SlideRendererProps {
 const fallbackLayout: SlideLayoutId = "bullet-list";
 const unknownLayoutWarnings = new Set<string>();
 
+function extractSlideTitle(rawMarkdown: string): string {
+  const withoutFrontmatter = rawMarkdown.startsWith("---\n")
+    ? rawMarkdown.replace(/^---\n[\s\S]*?\n---\n?/, "")
+    : rawMarkdown;
+  const heading = withoutFrontmatter
+    .split(/\r?\n/)
+    .find((line) => line.trim().startsWith("# "))
+    ?.trim()
+    .slice(2);
+
+  return heading ?? "Untitled";
+}
+
 function normalizeThemeClassName(themeValue: string | undefined): string | null {
   if (!themeValue) {
     return null;
@@ -70,6 +83,36 @@ export function SlideRenderer({
   }
 
   const astInput = createSlideAstInputFromDocument(slide);
+  const slideDiagnostics = slide.diagnostics ?? [];
+  const errorDiagnostics = slideDiagnostics.filter(
+    (diagnostic) => diagnostic.severity === "error"
+  );
+  const themeClassName = normalizeThemeClassName(astInput.frontmatter.theme);
+  const sectionClassName = [template.rootClassName, themeClassName]
+    .filter((value) => typeof value === "string" && value.length > 0)
+    .join(" ");
+
+  if (errorDiagnostics.length > 0) {
+    return (
+      <section
+        className={sectionClassName}
+        data-power-slide-layout={slide.layout}
+        data-power-slide-root
+      >
+        <div className="grid h-full place-items-center">
+          <div className="w-full rounded-2xl border border-red-200 bg-red-50 p-12 text-red-950">
+            <h1 className="mb-6 text-balance">Unable to render: {extractSlideTitle(slide.rawMarkdown)}</h1>
+            <ul className="space-y-3 pl-8 text-2xl leading-snug">
+              {errorDiagnostics.map((diagnostic, index) => (
+                <li key={`${diagnostic.message}-${index}`}>{diagnostic.message}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   const decodeResult = decodeSlideTemplate(template, astInput);
   const slots = resolveTemplateSlots(
     {
@@ -81,10 +124,6 @@ export function SlideRenderer({
       slideCount
     }
   );
-  const themeClassName = normalizeThemeClassName(astInput.frontmatter.theme);
-  const sectionClassName = [template.rootClassName, themeClassName]
-    .filter((value) => typeof value === "string" && value.length > 0)
-    .join(" ");
 
   return (
     <section
