@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef } from "react";
 import { parseDeckMarkdown } from "@power/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { DownloadIcon } from "lucide-react";
 
 interface MarkdownEditorPanelProps {
   markdown: string;
@@ -118,10 +120,36 @@ export function MarkdownEditorPanel({
     onChange(nextMarkdown);
   };
 
+  const handleExportMarkdown = () => {
+    const blob = new Blob([markdown], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "deck-content.md";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Card className="min-h-[72vh] print:hidden">
       <CardHeader>
-        <CardTitle>Deck markdown</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <span>Content</span>
+          <Button
+            aria-label="Export markdown"
+            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+            onClick={handleExportMarkdown}
+            size="icon"
+            title="Export markdown"
+            type="button"
+            variant="ghost"
+          >
+            <DownloadIcon className="size-3.5" />
+          </Button>
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div
@@ -134,27 +162,32 @@ export function MarkdownEditorPanel({
             const isActive = selectedSlideId ? selectedSlideId === slide.id : index === 0;
 
             return (
-              <textarea
-                aria-label={`Deck markdown for slide ${index + 1}`}
-                className="deck-slide-textarea block w-full border-0 bg-transparent px-3 py-2 font-mono text-xs leading-6 shadow-none focus-visible:outline-none"
+              <div
+                className="deck-slide-editor"
                 data-active={isActive ? "true" : "false"}
                 key={slide.id}
-                onChange={(event) => {
-                  resizeTextarea(event.target);
-                  handleSlideChange(slide.id, event.target.value);
-                }}
-                onFocus={() => onSelectSlide(slide.id)}
-                ref={(node) => {
-                  if (node) {
-                    textareaRefs.current.set(slide.id, node);
-                    return;
-                  }
+              >
+                <textarea
+                  aria-label={`Deck markdown for slide ${index + 1}`}
+                  className="deck-slide-textarea block w-full border-0 bg-transparent px-3 py-2 font-mono text-xs leading-6 shadow-none focus-visible:outline-none"
+                  data-active={isActive ? "true" : "false"}
+                  onChange={(event) => {
+                    resizeTextarea(event.target);
+                    handleSlideChange(slide.id, event.target.value);
+                  }}
+                  onFocus={() => onSelectSlide(slide.id)}
+                  ref={(node) => {
+                    if (node) {
+                      textareaRefs.current.set(slide.id, node);
+                      return;
+                    }
 
-                  textareaRefs.current.delete(slide.id);
-                }}
-                spellCheck={false}
-                value={slide.markdown}
-              />
+                    textareaRefs.current.delete(slide.id);
+                  }}
+                  spellCheck={false}
+                  value={slide.markdown}
+                />
+              </div>
             );
           })}
         </div>

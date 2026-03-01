@@ -104,8 +104,6 @@ body {
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --deck-slide-active-bg: #f2f2f2;
-  --deck-slide-active-fg: inherit;
 }
 
 .dark {
@@ -151,20 +149,30 @@ body {
   }
 }
 
-@supports (color: Highlight) {
-  :root {
-    --deck-slide-active-bg: Highlight;
-    --deck-slide-active-fg: HighlightText;
-  }
+.deck-slide-editor {
+  position: relative;
+}
+
+.deck-slide-editor::before {
+  content: "";
+  position: absolute;
+  top: 0.3rem;
+  bottom: 0.3rem;
+  left: 0.15rem;
+  width: 3px;
+  border-radius: 9999px;
+  opacity: 0;
+  pointer-events: none;
+  background-color: Highlight;
+  transition: opacity 120ms ease-out;
+}
+
+.deck-slide-editor[data-active="true"]::before {
+  opacity: 1;
 }
 
 .deck-slide-textarea {
   min-height: 12rem;
   overflow: hidden;
   resize: none;
-}
-
-.deck-slide-textarea[data-active="true"] {
-  background-color: var(--deck-slide-active-bg);
-  color: var(--deck-slide-active-fg);
 }

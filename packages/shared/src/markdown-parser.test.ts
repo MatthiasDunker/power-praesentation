@@ -171,6 +171,25 @@ footer:
     });
   });
 
+  it("normalizes blank footer cols to empty strings instead of null on refresh", () => {
+    const parsed = parseDeckMarkdown(
+      `---
+layout: title-hero
+theme: sand
+footer:
+  cols:
+    - First col 1
+    -  
+    - "{{ page }}/{{pages}}"
+---
+# Intro`
+    );
+
+    expect(parsed.slides[0].layout).toBe("title-hero");
+    expect(parsed.normalizedMarkdown).not.toContain("- null");
+    expect(parsed.normalizedMarkdown).toContain('- ""');
+  });
+
   it("keeps layout stable when trailing frontmatter lines are unfinished", () => {
     const parsed = parseDeckMarkdown(
       `---

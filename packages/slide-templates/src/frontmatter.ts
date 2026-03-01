@@ -202,6 +202,14 @@ export function stringifyFrontmatter(
     frontmatterWithLayout[key] = value;
   }
 
+  const footer = frontmatterWithLayout.footer;
+  if (isRecord(footer) && Array.isArray(footer.cols)) {
+    frontmatterWithLayout.footer = {
+      ...footer,
+      cols: footer.cols.map((entry) => (entry === null ? "" : entry))
+    };
+  }
+
   return stringifyYaml(frontmatterWithLayout, {
     lineWidth: 0
   }).trim();

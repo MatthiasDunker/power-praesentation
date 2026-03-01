@@ -48,6 +48,34 @@ footer:
     });
   });
 
+  it("stringifies blank YAML list items in footer cols as empty strings", () => {
+    const parsed = parseFrontmatter(`---
+layout: title-hero
+theme: sand
+footer:
+  cols:
+    - First col 1
+    -  
+    - "{{ page }}/{{pages}}"
+---
+# Intro`);
+    const serialized = stringifyFrontmatter(parsed.frontmatterData, "title-hero");
+
+    expect(serialized).toContain("footer:");
+    expect(serialized).toContain("cols:");
+    expect(serialized).not.toContain("- null");
+    expect(serialized).toContain('- ""');
+
+    const roundTripped = parseFrontmatter(`---\n${serialized}\n---\n# Intro`);
+    expect(roundTripped.frontmatterData).toEqual({
+      layout: "title-hero",
+      theme: "sand",
+      footer: {
+        cols: ["First col 1", "", "{{ page }}/{{pages}}"]
+      }
+    });
+  });
+
   it("recovers unquoted handlebar tokens in YAML list scalars", () => {
     const parsed = parseFrontmatter(`---
 layout: title-hero

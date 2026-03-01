@@ -18,7 +18,17 @@ function asStringArray(value: unknown): string[] | null {
     return null;
   }
 
-  return value.map((entry) => (typeof entry === "string" ? entry : String(entry)));
+  return value.map((entry) => {
+    if (typeof entry === "string") {
+      return entry;
+    }
+
+    if (entry === null || typeof entry === "undefined") {
+      return "";
+    }
+
+    return String(entry);
+  });
 }
 
 export function FooterPartial({ value, className }: FooterPartialProps) {
