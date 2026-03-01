@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import ReactMarkdown from "react-markdown";
 
 export interface FooterPartialProps {
   value: unknown;
@@ -31,6 +32,24 @@ function asStringArray(value: unknown): string[] | null {
   });
 }
 
+function FooterInlineMarkdown({ markdown }: { markdown: string }) {
+  return (
+    <ReactMarkdown
+      components={{
+        p: ({ children }) => <>{children}</>,
+        a: ({ children, href }) => (
+          <a className="underline decoration-zinc-400 underline-offset-2" href={href}>
+            {children}
+          </a>
+        )
+      }}
+      skipHtml
+    >
+      {markdown}
+    </ReactMarkdown>
+  );
+}
+
 export function FooterPartial({ value, className }: FooterPartialProps) {
   if (typeof value === "string") {
     return (
@@ -43,7 +62,7 @@ export function FooterPartial({ value, className }: FooterPartialProps) {
           .join(" ")}
         data-power-partial="footer"
       >
-        {value}
+        <FooterInlineMarkdown markdown={value} />
       </p>
     );
   }
@@ -70,7 +89,7 @@ export function FooterPartial({ value, className }: FooterPartialProps) {
             className={index === cols.length - 1 ? "text-right" : "text-left"}
             key={`${index}-${column.slice(0, 12)}`}
           >
-            {column}
+            <FooterInlineMarkdown markdown={column} />
           </span>
         ))}
       </div>
@@ -93,7 +112,7 @@ export function FooterPartial({ value, className }: FooterPartialProps) {
         .join(" ")}
       data-power-partial="footer"
     >
-      {text}
+      <FooterInlineMarkdown markdown={text} />
     </p>
   );
 }

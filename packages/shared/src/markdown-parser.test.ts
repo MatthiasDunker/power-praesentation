@@ -295,4 +295,27 @@ layout: bullet-list
     const footerMatches = parsed.normalizedMarkdown.match(/\nfooter:/g) ?? [];
     expect(footerMatches).toHaveLength(1);
   });
+
+  it("parses unquoted markdown link strings in footer columns", () => {
+    const parsed = parseDeckMarkdown(
+      `---
+layout: title-hero
+theme: sand
+footer:
+  cols:
+    - Matthias Dunker
+    - [www.interfacedivide.com](https://www.interfacedivide.com)
+    - "{{ page }}/{{pages}}"
+---
+# Intro`
+    );
+
+    expect(parsed.slides[0].frontmatterData.footer).toEqual({
+      cols: [
+        "Matthias Dunker",
+        "[www.interfacedivide.com](https://www.interfacedivide.com)",
+        "{{ page }}/{{pages}}"
+      ]
+    });
+  });
 });

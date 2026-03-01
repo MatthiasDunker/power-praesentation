@@ -110,7 +110,7 @@ export function createConfig(): PresetMatricssOptions["config"] {
               ls: "0.02em",
             },
             body: {
-              f: "400 18.5px/32px var(--font-main)",
+              f: "400 25px/36px var(--font-main)",
               ls: "0.015em",
             },
             overline: {
@@ -128,7 +128,7 @@ export function createConfig(): PresetMatricssOptions["config"] {
               ls: "0.02em",
             },
             body: {
-              f: "400 28px/40px var(--font-main)",
+              f: "400 38px/48px var(--font-main)",
               ls: "0.015em",
             },
             overline: {

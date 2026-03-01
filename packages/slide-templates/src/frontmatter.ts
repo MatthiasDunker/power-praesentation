@@ -14,7 +14,15 @@ function findInlineCommentStart(value: string): number {
   return -1;
 }
 
-function quoteHandlebarLeadingScalar(value: string): string {
+function shouldQuoteLeadingScalar(value: string): boolean {
+  if (value.startsWith("{{")) {
+    return true;
+  }
+
+  return /^\[[^\]]+\]\([^)]+\)$/.test(value);
+}
+
+function quoteSpecialLeadingScalar(value: string): string {
   const leadingWhitespaceLength = value.length - value.trimStart().length;
   const leadingWhitespace = value.slice(0, leadingWhitespaceLength);
   const content = value.trimStart();
@@ -32,16 +40,19 @@ function quoteHandlebarLeadingScalar(value: string): string {
     return value;
   }
 
-  if (!content.startsWith("{{")) {
+  const commentStart = findInlineCommentStart(content);
+  const scalarWithoutComment =
+    commentStart === -1 ? content : content.slice(0, commentStart).trimEnd();
+
+  if (!shouldQuoteLeadingScalar(scalarWithoutComment)) {
     return value;
   }
 
-  const commentStart = findInlineCommentStart(content);
   if (commentStart === -1) {
     return `${leadingWhitespace}${JSON.stringify(content)}`;
   }
 
-  const scalar = content.slice(0, commentStart).trimEnd();
+  const scalar = scalarWithoutComment;
   const comment = content.slice(commentStart);
   return `${leadingWhitespace}${JSON.stringify(scalar)} ${comment}`;
 }
@@ -51,13 +62,13 @@ function sanitizeHandlebarLeadingScalars(frontmatterText: string): string {
   const nextLines = lines.map((line) => {
     const listItemMatch = line.match(/^(\s*-\s+)(.+)$/);
     if (listItemMatch) {
-      const value = quoteHandlebarLeadingScalar(listItemMatch[2]);
+      const value = quoteSpecialLeadingScalar(listItemMatch[2]);
       return `${listItemMatch[1]}${value}`;
     }
 
     const keyValueMatch = line.match(/^(\s*[^:#][^:]*:\s+)(.+)$/);
     if (keyValueMatch) {
-      const value = quoteHandlebarLeadingScalar(keyValueMatch[2]);
+      const value = quoteSpecialLeadingScalar(keyValueMatch[2]);
       return `${keyValueMatch[1]}${value}`;
     }
 

@@ -1,4 +1,4 @@
-import { asNonEmptyString } from "../../decode-engine";
+import { asNonEmptyString, toThemeClassName } from "../../decode-engine";
 import { parseMarkdownAst } from "../../markdown-ast";
 import type { SlideContainerRule, SlideTemplateDefinition } from "../../types";
 import type { TwoColumnTemplateProps } from "../shared";
@@ -7,13 +7,13 @@ export const twoColumnContainerRules: readonly SlideContainerRule[] = [
   {
     kind: "leftColumn",
     min: 1,
-    max: 1
+    max: 1,
   },
   {
     kind: "rightColumn",
     min: 1,
-    max: 1
-  }
+    max: 1,
+  },
 ];
 
 function toNodeArray(value: unknown): Record<string, unknown>[] {
@@ -21,7 +21,10 @@ function toNodeArray(value: unknown): Record<string, unknown>[] {
     return [];
   }
 
-  return value.filter((entry) => entry && typeof entry === "object") as Record<string, unknown>[];
+  return value.filter((entry) => entry && typeof entry === "object") as Record<
+    string,
+    unknown
+  >[];
 }
 
 function paragraphToText(node: Record<string, unknown>): string {
@@ -57,10 +60,12 @@ function extractLeadFromBody(bodyMarkdown: string): string | undefined {
   const normalized = bodyMarkdown.replace(/\r\n?/g, "\n");
   const lines = normalized.split("\n");
   const firstColumnIndex = lines.findIndex((line) =>
-    /^:::\s*(leftColumn|rightColumn)\s*$/.test(line.trim())
+    /^:::\s*(leftColumn|rightColumn)\s*$/.test(line.trim()),
   );
   const leadRangeMarkdown =
-    firstColumnIndex >= 0 ? lines.slice(0, firstColumnIndex).join("\n") : normalized;
+    firstColumnIndex >= 0
+      ? lines.slice(0, firstColumnIndex).join("\n")
+      : normalized;
   const ast = parseMarkdownAst(leadRangeMarkdown);
   const children = toNodeArray(ast.children);
   const leadParagraphs: string[] = [];
@@ -89,39 +94,60 @@ function extractLeadFromBody(bodyMarkdown: string): string | undefined {
   return leadParagraphs.join("\n\n");
 }
 
-export const twoColumnTemplateDefinition: SlideTemplateDefinition<TwoColumnTemplateProps> = {
-  id: "two-column",
-  containerRules: twoColumnContainerRules,
-  decoder: {
-    kind: "schema",
-    schema: {
-      fields: {
-        title: {
-          sources: [{ kind: "heading", depth: 1, nonEmpty: true }],
-          transform: (value) => asNonEmptyString(value),
-          default: "Untitled",
-          missingPolicy: "warning"
+export const twoColumnTemplateDefinition: SlideTemplateDefinition<TwoColumnTemplateProps> =
+  {
+    id: "two-column",
+    containerRules: twoColumnContainerRules,
+    decoder: {
+      kind: "schema",
+      schema: {
+        fields: {
+          title: {
+            sources: [{ kind: "heading", depth: 1, nonEmpty: true }],
+            transform: (value) => asNonEmptyString(value),
+            default: "Untitled",
+            missingPolicy: "warning",
+          },
+          lead: {
+            sources: [
+              {
+                kind: "custom",
+                resolve: (context) =>
+                  extractLeadFromBody(context.input.bodyMarkdown),
+              },
+            ],
+            transform: (value) => asNonEmptyString(value),
+          },
+          leftColumn: {
+            sources: [
+              {
+                kind: "container",
+                containerKind: "leftColumn",
+                index: 0,
+                nonEmpty: true,
+              },
+            ],
+            default: "",
+            missingPolicy: "warning",
+          },
+          rightColumn: {
+            sources: [
+              {
+                kind: "container",
+                containerKind: "rightColumn",
+                index: 0,
+                nonEmpty: true,
+              },
+            ],
+            default: "",
+            missingPolicy: "warning",
+          },
+          className: {
+            sources: [{ kind: "frontmatter", key: "theme", nonEmpty: true }],
+            transform: (value) => toThemeClassName(value),
+            default: "theme-default",
+          },
         },
-        lead: {
-          sources: [
-            {
-              kind: "custom",
-              resolve: (context) => extractLeadFromBody(context.input.bodyMarkdown)
-            }
-          ],
-          transform: (value) => asNonEmptyString(value)
-        },
-        leftColumn: {
-          sources: [{ kind: "container", containerKind: "leftColumn", index: 0, nonEmpty: true }],
-          default: "",
-          missingPolicy: "warning"
-        },
-        rightColumn: {
-          sources: [{ kind: "container", containerKind: "rightColumn", index: 0, nonEmpty: true }],
-          default: "",
-          missingPolicy: "warning"
-        }
-      }
-    }
-  }
-};
+      },
+    },
+  };

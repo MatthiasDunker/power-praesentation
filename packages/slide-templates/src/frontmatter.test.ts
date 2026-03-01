@@ -119,4 +119,29 @@ footer:
     expect(parsed.frontmatter.layout).toBe("title-hero");
     expect(parsed.frontmatter.theme).toBe("sand");
   });
+
+  it("recovers unquoted markdown links in YAML list scalars", () => {
+    const parsed = parseFrontmatter(`---
+layout: title-hero
+theme: sand
+footer:
+  cols:
+    - Matthias Dunker
+    - [www.interfacedivide.com](https://www.interfacedivide.com)
+    - "{{ page }}/{{pages}}"
+---
+# Intro`);
+
+    expect(parsed.frontmatterData).toEqual({
+      layout: "title-hero",
+      theme: "sand",
+      footer: {
+        cols: [
+          "Matthias Dunker",
+          "[www.interfacedivide.com](https://www.interfacedivide.com)",
+          "{{ page }}/{{pages}}"
+        ]
+      }
+    });
+  });
 });
