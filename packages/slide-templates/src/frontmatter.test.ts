@@ -47,4 +47,48 @@ footer:
       }
     });
   });
+
+  it("recovers unquoted handlebar tokens in YAML list scalars", () => {
+    const parsed = parseFrontmatter(`---
+layout: title-hero
+theme: sand
+footer:
+  cols:
+    - First col 1
+    - {{ page }}/{{pages}}
+---
+# Intro`);
+
+    expect(parsed.frontmatterData).toEqual({
+      layout: "title-hero",
+      theme: "sand",
+      footer: {
+        cols: ["First col 1", "{{ page }}/{{pages}}"]
+      }
+    });
+    expect(parsed.frontmatter.layout).toBe("title-hero");
+  });
+
+  it("keeps parsed prefix when trailing frontmatter lines are unfinished", () => {
+    const parsed = parseFrontmatter(`---
+layout: title-hero
+theme: sand
+footer:
+  cols:
+    - First col 1
+-
+    - {{ page }}/{{pages}}
+---
+# Intro`);
+
+    expect(parsed.frontmatterData).toEqual({
+      layout: "title-hero",
+      theme: "sand",
+      footer: {
+        cols: ["First col 1"]
+      }
+    });
+    expect(parsed.frontmatter.layout).toBe("title-hero");
+    expect(parsed.frontmatter.theme).toBe("sand");
+  });
 });

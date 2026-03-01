@@ -50,7 +50,7 @@ export default defineConfig({
   font-weight: 400;
   font-display: swap;
   src:
-    url("/fonts/switzer-regular.woff2") format("woff2");
+    url("/fonts/Switzer-Regular.woff2") format("woff2");
 }
         :root {
           --font-main: "Switzer", system-ui, sans-serif;

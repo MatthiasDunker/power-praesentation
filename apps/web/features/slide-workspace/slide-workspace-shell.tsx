@@ -83,16 +83,52 @@ function stableSerialize(value: unknown): string {
 function toFrontmatterStyleSignature(rawMarkdown: string): string {
   const parsed = parseFrontmatter(rawMarkdown.trimStart());
   const keys = Object.keys(parsed.frontmatterData).sort();
-  if (keys.length === 0) {
-    return "";
-  }
-
   const normalized: Record<string, unknown> = {};
   for (const key of keys) {
     normalized[key] = parsed.frontmatterData[key];
   }
 
-  return stableSerialize(normalized);
+  const bodyStructure = parsed.bodyMarkdown
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => {
+      if (line === ":::") {
+        return "container-close";
+      }
+
+      const containerOpen = line.match(/^:::\s*([a-zA-Z0-9_-]+)/);
+      if (containerOpen) {
+        return `container-open:${containerOpen[1]}`;
+      }
+
+      const heading = line.match(/^(#{1,6})\s+/);
+      if (heading) {
+        return `heading:${heading[1].length}`;
+      }
+
+      if (/^[-*+]\s+/.test(line)) {
+        return "list-item:unordered";
+      }
+
+      if (/^\d+\.\s+/.test(line)) {
+        return "list-item:ordered";
+      }
+
+      if (/^>\s*/.test(line)) {
+        return "blockquote";
+      }
+
+      if (/^```/.test(line)) {
+        return "code-fence";
+      }
+
+      return "paragraph";
+    })
+    .join("|");
+
+  return `${stableSerialize(normalized)}::${bodyStructure}`;
 }
 
 async function* streamEvents(

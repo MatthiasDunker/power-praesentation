@@ -152,6 +152,46 @@ layout: bullet-list
     });
   });
 
+  it("keeps layout and footer payload when handlebar tokens are unquoted in lists", () => {
+    const parsed = parseDeckMarkdown(
+      `---
+layout: title-hero
+theme: sand
+footer:
+  cols:
+    - First col 1
+    - {{ page }}/{{pages}}
+---
+# Intro`
+    );
+
+    expect(parsed.slides[0].layout).toBe("title-hero");
+    expect(parsed.slides[0].frontmatterData.footer).toEqual({
+      cols: ["First col 1", "{{ page }}/{{pages}}"]
+    });
+  });
+
+  it("keeps layout stable when trailing frontmatter lines are unfinished", () => {
+    const parsed = parseDeckMarkdown(
+      `---
+layout: title-hero
+theme: sand
+footer:
+  cols:
+    - First col 1
+-
+    - {{ page }}/{{pages}}
+---
+# Intro`
+    );
+
+    expect(parsed.slides[0].layout).toBe("title-hero");
+    expect(parsed.slides[0].frontmatterData.theme).toBe("sand");
+    expect(parsed.slides[0].frontmatterData.footer).toEqual({
+      cols: ["First col 1"]
+    });
+  });
+
   it("includes resolved frontmatter in slide documents", () => {
     const parsed = parseDeckMarkdown(
       `---\nlayout: title-hero\nfooter: Acme 2026\n---\n# Intro\n\n---\nlayout: bullet-list\n---\n# Detail`
