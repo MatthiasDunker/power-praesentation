@@ -5,11 +5,19 @@ import ListItem from "./components/list-item";
 
 interface InfoBoxProps {
   markdown: string;
+  stretch?: boolean;
 }
 
-export function InfoBox({ markdown }: InfoBoxProps) {
+export function InfoBox({ markdown, stretch = false }: InfoBoxProps) {
   return (
-    <aside className="theme-sand tint-bgc-full p-gutter space-y-[var(--spacing-gutter)]">
+    <aside
+      className={[
+        "theme-sand tint-bgc-full p-gutter space-y-[var(--spacing-gutter)]",
+        stretch ? "h-full" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <ReactMarkdown
         components={{
           p: Paragraph,

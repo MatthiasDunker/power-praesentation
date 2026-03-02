@@ -6,9 +6,16 @@ export interface MarkdownAstRoot {
   [key: string]: unknown;
 }
 
+export interface ContainerParams {
+  tokens: string[];
+  flags: string[];
+  attributes: Record<string, string>;
+}
+
 export interface SlideAstContainerNode {
   type: "fenced_container";
   kind: string;
+  params?: ContainerParams;
   markdown: string;
   ast: MarkdownAstRoot;
   lineStart: number;

@@ -58,6 +58,17 @@ describe("parseDeckMarkdown", () => {
     );
   });
 
+  it("flags tolerant boundary recovery when container openings have parameters", () => {
+    const markdown = [
+      "---\nlayout: two-column\n---\n# Compare\n\n::: leftColumn stretch\nLeft side",
+      "---\nlayout: title-hero\n---\n# Next\n\nText"
+    ].join("\n\n---\n\n");
+
+    const detailedSegments = splitDeckMarkdownForEditingDetailed(markdown);
+    expect(detailedSegments).toHaveLength(2);
+    expect(detailedSegments[0]?.recoveredBoundary).toBe(true);
+  });
+
   it("round-trips canonical editor separators in edit splitting", () => {
     const markdown = [
       "---\nlayout: title-hero\n---\n# Intro",

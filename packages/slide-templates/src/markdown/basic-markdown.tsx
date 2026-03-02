@@ -5,6 +5,8 @@ import Paragraph from "./components/paragraph";
 import List from "./components/list";
 import ListItem from "./components/list-item";
 import Headline from "./components/headline";
+import { parseFencedContainerOpenLine } from "../fenced-containers";
+import type { ContainerParams } from "../types";
 
 interface BasicMarkdownProps {
   markdown: string;
@@ -15,6 +17,7 @@ type MarkdownBlockKind = "infoBox" | "divivderList";
 interface MarkdownSegment {
   kind: "markdown" | MarkdownBlockKind;
   markdown: string;
+  params?: ContainerParams;
 }
 
 const fencedSegmentKindByContainerKind: Record<string, MarkdownBlockKind> = {
@@ -60,6 +63,7 @@ export function parseBasicMarkdownSegments(
   const markdownLines: string[] = [];
   let activeContainer: {
     kind: MarkdownBlockKind;
+    params?: ContainerParams;
     openLine: string;
     lines: string[];
   } | null = null;
@@ -74,6 +78,7 @@ export function parseBasicMarkdownSegments(
         ).join("\n");
         segments.push({
           kind: activeContainer.kind,
+          params: activeContainer.params,
           markdown:
             containerMarkdown.trim().length === 0 ? "" : containerMarkdown,
         });
@@ -85,15 +90,20 @@ export function parseBasicMarkdownSegments(
       continue;
     }
 
-    const openMatch = trimmed.match(/^:::\s*([a-zA-Z0-9_-]+)\s*$/);
-    const segmentKind = openMatch
-      ? fencedSegmentKindByContainerKind[openMatch[1]]
+    const openLine = parseFencedContainerOpenLine(trimmed);
+    const segmentKind = openLine
+      ? fencedSegmentKindByContainerKind[openLine.kind]
       : undefined;
 
     if (segmentKind) {
       pushMarkdownSegment(segments, markdownLines);
       markdownLines.length = 0;
-      activeContainer = { kind: segmentKind, openLine: line, lines: [] };
+      activeContainer = {
+        kind: segmentKind,
+        params: openLine?.params,
+        openLine: line,
+        lines: []
+      };
       continue;
     }
 
@@ -120,8 +130,13 @@ export function BasicMarkdown({ markdown }: BasicMarkdownProps) {
     <>
       {segments.map((segment, index) => {
         if (segment.kind === "infoBox") {
+          const isStretch = segment.params?.flags.includes("stretch") ?? false;
           return (
-            <InfoBox key={`info-box-${index}`} markdown={segment.markdown} />
+            <InfoBox
+              key={`info-box-${index}`}
+              markdown={segment.markdown}
+              stretch={isStretch}
+            />
           );
         }
 

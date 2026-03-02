@@ -4,8 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SlideDocument } from "@power/contracts";
 import { SlideRenderer } from "@power/ui";
 import { toPng } from "html-to-image";
-import { OctagonX, TriangleAlert } from "lucide-react";
+import { OctagonX, Trash2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { cn } from "@/lib/utils";
 
 const thumbnailDisplayWidth = 176;
@@ -35,6 +41,7 @@ interface SlideNavProps {
   selectionSignal: SlideSelectionSignal | null;
   liveSignal: SlideThumbnailLiveSignal | null;
   onSelectSlide: (slideId: string) => void;
+  onDeleteSlide: (slideId: string) => void;
 }
 
 function titleFromMarkdown(markdown: string): string {
@@ -65,6 +72,7 @@ export function SlideNav({
   selectionSignal,
   liveSignal,
   onSelectSlide,
+  onDeleteSlide,
 }: SlideNavProps) {
   const [bitmapBySlideId, setBitmapBySlideId] = useState<
     Record<string, string>
@@ -369,91 +377,103 @@ export function SlideNav({
               : {};
 
             return (
-              <Button
-                className={cn(
-                  "h-auto w-full flex-col items-start gap-2 border-0 bg-transparent p-2 text-left shadow-none transition-none",
-                  !isSelected ? "hover:bg-transparent hover:text-inherit" : "",
-                )}
-                key={slide.id}
-                onClick={() => onSelectSlide(slide.id)}
-                type="button"
-                variant={isSelected ? "default" : "ghost"}
-                style={{
-                  ...selectedButtonStyle,
-                  width: thumbnailDisplayWidth + 16,
-                }}
-              >
-                <span
-                  aria-hidden
-                  className={cn(
-                    "relative aspect-video overflow-hidden rounded-sm border",
-                    isSelected
-                      ? "border-zinc-700 bg-zinc-800/80 text-zinc-200"
-                      : "border-zinc-200 bg-zinc-50 text-zinc-500 [button:hover_>_&]:ring-2 [button:hover_>_&]:ring-zinc-300",
-                  )}
-                  style={{
-                    aspectRatio: slideAspectRatio,
-                    width: thumbnailDisplayWidth,
-                  }}
-                  data-testid={`slide-thumbnail-${slide.id}`}
-                  data-thumbnail-mode={mode}
-                >
-                  {mode === "live" ? (
-                    <article
-                      className="absolute left-1/2 top-1/2 origin-top-left overflow-hidden bg-white text-zinc-900"
-                      style={{
-                        transform: `scale(${thumbnailDisplayWidth / slideWidth}) translate(-50%, -50%)`,
-                        transformOrigin: "top left",
-                        width: slideWidth,
-                        height: slideHeight,
-                      }}
-                    >
-                      <SlideRenderer
-                        slide={slide}
-                        slideNumber={index + 1}
-                        slideCount={slides.length}
-                      />
-                    </article>
-                  ) : null}
-                  {mode === "bitmap" && bitmap ? (
-                    <img
-                      alt={`Slide ${index + 1} thumbnail`}
-                      className="h-full w-full object-cover"
-                      src={bitmap}
-                    />
-                  ) : null}
-                  {mode === "pending" ? (
-                    <span className="grid h-full w-full place-items-center text-[11px] font-medium uppercase tracking-wide">
-                      loading
-                    </span>
-                  ) : null}
-                </span>
-                <span className="flex w-full flex-col gap-0.5">
-                  <span className="text-xs opacity-80">Slide {index + 1}</span>
-                  <span className="block w-full truncate text-xs">
-                    {titleFromMarkdown(slide.rawMarkdown)}
-                  </span>
-                  {warningCount > 0 || errorCount > 0 ? (
+              <ContextMenu key={slide.id}>
+                <ContextMenuTrigger asChild>
+                  <Button
+                    className={cn(
+                      "h-auto w-full flex-col items-start gap-2 border-0 bg-transparent p-2 text-left shadow-none transition-none",
+                      !isSelected ? "hover:bg-transparent hover:text-inherit" : "",
+                    )}
+                    onClick={() => onSelectSlide(slide.id)}
+                    type="button"
+                    variant={isSelected ? "default" : "ghost"}
+                    style={{
+                      ...selectedButtonStyle,
+                      width: thumbnailDisplayWidth + 16,
+                    }}
+                  >
                     <span
-                      className="mt-0.5 flex items-center gap-2 text-[11px]"
-                      data-testid={`slide-diagnostics-${slide.id}`}
+                      aria-hidden
+                      className={cn(
+                        "relative aspect-video overflow-hidden rounded-sm border",
+                        isSelected
+                          ? "border-zinc-700 bg-zinc-800/80 text-zinc-200"
+                          : "border-zinc-200 bg-zinc-50 text-zinc-500 [button:hover_>_&]:ring-2 [button:hover_>_&]:ring-zinc-300",
+                      )}
+                      style={{
+                        aspectRatio: slideAspectRatio,
+                        width: thumbnailDisplayWidth,
+                      }}
+                      data-testid={`slide-thumbnail-${slide.id}`}
+                      data-thumbnail-mode={mode}
                     >
-                      {warningCount > 0 ? (
-                        <span className="inline-flex items-center gap-1">
-                          <TriangleAlert className="size-3 text-amber-500" />
-                          <span>{warningCount}</span>
-                        </span>
+                      {mode === "live" ? (
+                        <article
+                          className="absolute left-1/2 top-1/2 origin-top-left overflow-hidden bg-white text-zinc-900"
+                          style={{
+                            transform: `scale(${thumbnailDisplayWidth / slideWidth}) translate(-50%, -50%)`,
+                            transformOrigin: "top left",
+                            width: slideWidth,
+                            height: slideHeight,
+                          }}
+                        >
+                          <SlideRenderer
+                            slide={slide}
+                            slideNumber={index + 1}
+                            slideCount={slides.length}
+                          />
+                        </article>
                       ) : null}
-                      {errorCount > 0 ? (
-                        <span className="inline-flex items-center gap-1">
-                          <OctagonX className="size-3 text-red-600" />
-                          <span>{errorCount}</span>
+                      {mode === "bitmap" && bitmap ? (
+                        <img
+                          alt={`Slide ${index + 1} thumbnail`}
+                          className="h-full w-full object-cover"
+                          src={bitmap}
+                        />
+                      ) : null}
+                      {mode === "pending" ? (
+                        <span className="grid h-full w-full place-items-center text-[11px] font-medium uppercase tracking-wide">
+                          loading
                         </span>
                       ) : null}
                     </span>
-                  ) : null}
-                </span>
-              </Button>
+                    <span className="flex w-full flex-col gap-0.5">
+                      <span className="text-xs opacity-80">Slide {index + 1}</span>
+                      <span className="block w-full truncate text-xs">
+                        {titleFromMarkdown(slide.rawMarkdown)}
+                      </span>
+                      {warningCount > 0 || errorCount > 0 ? (
+                        <span
+                          className="mt-0.5 flex items-center gap-2 text-[11px]"
+                          data-testid={`slide-diagnostics-${slide.id}`}
+                        >
+                          {warningCount > 0 ? (
+                            <span className="inline-flex items-center gap-1">
+                              <TriangleAlert className="size-3 text-amber-500" />
+                              <span>{warningCount}</span>
+                            </span>
+                          ) : null}
+                          {errorCount > 0 ? (
+                            <span className="inline-flex items-center gap-1">
+                              <OctagonX className="size-3 text-red-600" />
+                              <span>{errorCount}</span>
+                            </span>
+                          ) : null}
+                        </span>
+                      ) : null}
+                    </span>
+                  </Button>
+                </ContextMenuTrigger>
+                <ContextMenuContent className="w-40">
+                  <ContextMenuItem
+                    className="text-red-600 focus:text-red-600"
+                    onSelect={() => onDeleteSlide(slide.id)}
+                  >
+                    <Trash2 />
+                    Delete
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenu>
             );
           })}
         </aside>

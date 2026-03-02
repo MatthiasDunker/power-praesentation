@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 const storageKey = "power.deck.current";
 const navSelectionDelayMs = 90;
 const markdownParseDebounceMs = 180;
+const slideSeparator = "\n\n---\n\n";
 
 const taskOrder: GenerationTaskId[] = [
   "ingest_input",
@@ -480,6 +481,74 @@ export function SlideWorkspaceShell() {
     setMarkdownText(nextMarkdown);
   };
 
+  const deleteSlideFromNav = (slideId: string) => {
+    const activeDeck = deckRef.current;
+    if (!activeDeck) {
+      return;
+    }
+
+    const deletedSlideIndex = activeDeck.slides.findIndex(
+      (slide) => slide.id === slideId,
+    );
+    if (deletedSlideIndex < 0) {
+      return;
+    }
+
+    const markdownSegments = splitDeckMarkdownForEditing(markdownText);
+    const sourceSegments =
+      markdownSegments.length === activeDeck.slides.length
+        ? markdownSegments
+        : activeDeck.slides.map((slide) => slide.rawMarkdown);
+    const nextMarkdown = sourceSegments
+      .filter((_, index) => index !== deletedSlideIndex)
+      .join(slideSeparator);
+
+    const parsed = parseDeckMarkdown(nextMarkdown);
+    const parsedSlides = toSlideDocuments(parsed);
+    const remainingSlides = activeDeck.slides.filter(
+      (slide) => slide.id !== slideId,
+    );
+    const remappedSlides = parsedSlides.map((slide, index) => ({
+      ...slide,
+      id: remainingSlides[index]?.id ?? slide.id,
+    }));
+
+    const nextDeck: DeckDocument = {
+      ...activeDeck,
+      slides: remappedSlides,
+      fullMarkdown: parsed.normalizedMarkdown,
+    };
+
+    setDeck(nextDeck);
+    setMarkdownText(nextDeck.fullMarkdown);
+
+    const currentSelectedSlideId = selectedSlideIdRef.current;
+    if (
+      currentSelectedSlideId &&
+      currentSelectedSlideId !== slideId &&
+      remappedSlides.some((slide) => slide.id === currentSelectedSlideId)
+    ) {
+      return;
+    }
+
+    if (remappedSlides.length === 0) {
+      setSelectedSlideId(null);
+      return;
+    }
+
+    const nextSelectedIndex = Math.min(
+      deletedSlideIndex,
+      remappedSlides.length - 1,
+    );
+    const nextSelectedSlideId = remappedSlides[nextSelectedIndex]?.id ?? null;
+    setSelectedSlideId(nextSelectedSlideId);
+
+    if (nextSelectedSlideId) {
+      emitSelectionSignal(nextSelectedSlideId, "nav");
+      emitThumbnailLiveSignal(nextSelectedSlideId, "select");
+    }
+  };
+
   return (
     <main className="min-h-screen text-zinc-900">
       <SlideRuntimeStyleSheet templateSignature={templateSignature} />
@@ -513,6 +582,7 @@ export function SlideWorkspaceShell() {
           liveSignal={thumbnailLiveSignal}
           selectedSlideId={selectedSlideId}
           onSelectSlide={selectSlideFromNav}
+          onDeleteSlide={deleteSlideFromNav}
         />
         <SlideCanvas slides={displaySlides} activeSlideId={selectedSlideId} />
         <MarkdownEditorPanel

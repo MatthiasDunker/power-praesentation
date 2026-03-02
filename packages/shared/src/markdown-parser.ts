@@ -3,6 +3,7 @@ import {
   createCoreTemplateRegistry,
   createSlideAstInputFromMarkdown,
   decodeSlideTemplate,
+  parseFencedContainerOpenLine,
   parseFooterDirective,
   parseFrontmatter,
   stringifyFrontmatter,
@@ -63,7 +64,7 @@ interface ParsedDeckSegment {
 }
 
 function isContainerOpenLine(trimmedLine: string): boolean {
-  return /^:::\s*[a-zA-Z0-9_-]+\s*$/.test(trimmedLine);
+  return parseFencedContainerOpenLine(trimmedLine) !== null;
 }
 
 function isContainerCloseLine(trimmedLine: string): boolean {

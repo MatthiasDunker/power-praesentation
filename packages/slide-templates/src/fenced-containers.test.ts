@@ -11,7 +11,7 @@ describe("parseFencedContainers", () => {
       ":::",
       "",
       "::: rightColumn",
-      "::: infoBox",
+      "::: infoBox stretch",
       "**Objective:** Deliver a scalable Design System v1.",
       ":::",
       "Supporting text",
@@ -27,7 +27,27 @@ describe("parseFencedContainers", () => {
     expect(parsed.containers[0]?.markdown).toBe("Left content");
     expect(parsed.containers[1]?.kind).toBe("rightColumn");
     expect(parsed.containers[1]?.markdown).toBe(
-      "::: infoBox\n**Objective:** Deliver a scalable Design System v1.\n:::\nSupporting text"
+      "::: infoBox stretch\n**Objective:** Deliver a scalable Design System v1.\n:::\nSupporting text"
     );
+  });
+
+  it("parses container flags and attributes on opening lines", () => {
+    const markdown = ["::: infoBox stretch tone=sand", "Body", ":::"].join("\n");
+
+    const parsed = parseFencedContainers(markdown);
+
+    expect(parsed.diagnostics).toEqual([]);
+    expect(parsed.containers).toHaveLength(1);
+    expect(parsed.containers[0]).toMatchObject({
+      kind: "infoBox",
+      params: {
+        tokens: ["stretch", "tone=sand"],
+        flags: ["stretch"],
+        attributes: {
+          tone: "sand"
+        }
+      },
+      markdown: "Body"
+    });
   });
 });

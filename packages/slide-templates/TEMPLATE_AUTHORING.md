@@ -34,6 +34,7 @@ Use `decoder: { kind: "custom", decode }` only when schema sources are not enoug
 Container rules still define expected container kinds/counts and diagnostics:
 
 - Example: `::: leftColumn` / `::: rightColumn` for `two-column`
+- Container opening syntax supports optional tokens: `::: kind [flag] [key=value]`
 - No nested containers in v1
 
 The decode engine validates counts and emits warning diagnostics without blocking rendering.

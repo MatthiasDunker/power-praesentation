@@ -53,9 +53,11 @@ export function MultiColumnTemplate(
         )}
         <div>
           <div
-            className={["grid gap-gutter", columnAlignClass, contentSizeClass].join(
-              " ",
-            )}
+            className={[
+              "grid gap-gutter",
+              columnAlignClass,
+              contentSizeClass,
+            ].join(" ")}
             style={
               {
                 gridTemplateColumns,
@@ -65,7 +67,7 @@ export function MultiColumnTemplate(
             {normalizedColumns.map((column, index) => (
               <div
                 key={index}
-                className={"min-w-0 space-y-[var(--spacing-gutter)]"}
+                className={"h-full space-y-[var(--spacing-gutter)]"}
               >
                 <BasicMarkdown markdown={column} />
               </div>
