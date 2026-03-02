@@ -2,11 +2,21 @@ import type { CSSProperties } from "react";
 import { BasicMarkdown } from "../../markdown/basic-markdown";
 import type { SlideTemplateSlots } from "../../ui-types";
 import type { MultiColumnTemplateProps } from "../shared";
+import { toColumnAlignItemsClass, toContentSizeClass } from "../shared";
 
 export function MultiColumnTemplate(
-  { title, lead, columns, className }: MultiColumnTemplateProps,
+  {
+    title,
+    lead,
+    columns,
+    columnAlign = "top",
+    contentSize = "medium",
+    className,
+  }: MultiColumnTemplateProps,
   slots: SlideTemplateSlots = {},
 ) {
+  const columnAlignClass = toColumnAlignItemsClass(columnAlign);
+  const contentSizeClass = toContentSizeClass(contentSize);
   const normalizedColumns = Array.isArray(columns) ? columns : [];
   const gridTemplateColumns =
     normalizedColumns.length > 0
@@ -43,7 +53,9 @@ export function MultiColumnTemplate(
         )}
         <div>
           <div
-            className="grid gap-gutter size-small items-stretch"
+            className={["grid gap-gutter", columnAlignClass, contentSizeClass].join(
+              " ",
+            )}
             style={
               {
                 gridTemplateColumns,

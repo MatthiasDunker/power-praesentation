@@ -1,7 +1,7 @@
 import { asNonEmptyString, toThemeClassName } from "../../decode-engine";
 import { parseMarkdownAst } from "../../markdown-ast";
 import type { SlideContainerRule, SlideTemplateDefinition } from "../../types";
-import type { TwoColumnTemplateProps } from "../shared";
+import { toColumnAlign, toContentSize, type TwoColumnTemplateProps } from "../shared";
 
 export const twoColumnContainerRules: readonly SlideContainerRule[] = [
   {
@@ -141,6 +141,16 @@ export const twoColumnTemplateDefinition: SlideTemplateDefinition<TwoColumnTempl
             ],
             default: "",
             missingPolicy: "warning",
+          },
+          columnAlign: {
+            sources: [{ kind: "frontmatter", key: "columnAlign", nonEmpty: true }],
+            transform: (value) => toColumnAlign(value),
+            default: "top"
+          },
+          contentSize: {
+            sources: [{ kind: "frontmatter", key: "contentSize", nonEmpty: true }],
+            transform: (value) => toContentSize(value),
+            default: "medium"
           },
           className: {
             sources: [{ kind: "frontmatter", key: "theme", nonEmpty: true }],

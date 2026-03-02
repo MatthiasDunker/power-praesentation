@@ -73,7 +73,10 @@ describe("two-column decoder", () => {
     expect(result?.props).toEqual({
       title: "Compare",
       leftColumn: "A",
-      rightColumn: "C"
+      rightColumn: "C",
+      columnAlign: "top",
+      contentSize: "medium",
+      className: "theme-default"
     });
   });
 
@@ -132,7 +135,88 @@ describe("two-column decoder", () => {
       title: "Build vs Buy",
       lead: "First lead paragraph.\n\nSecond lead paragraph.",
       leftColumn: "Left content",
-      rightColumn: "Right content"
+      rightColumn: "Right content",
+      columnAlign: "top",
+      contentSize: "medium",
+      className: "theme-default"
+    });
+  });
+
+  it("supports columnAlign from frontmatter", () => {
+    const registry = createCoreTemplateRegistry();
+    const template = registry["two-column"];
+
+    const contentMarkdown = "# Compare";
+    const result = template
+      ? decodeSlideTemplate(template, {
+          layout: "two-column",
+          frontmatter: { columnAlign: "center" },
+          frontmatterData: {},
+          bodyMarkdown: "",
+          contentMarkdown,
+          ast: parseMarkdownAst(contentMarkdown),
+          containers: [
+            {
+              type: "fenced_container",
+              kind: "leftColumn",
+              markdown: "A",
+              ast: { type: "root", children: [] },
+              lineStart: 1,
+              lineEnd: 1
+            },
+            {
+              type: "fenced_container",
+              kind: "rightColumn",
+              markdown: "B",
+              ast: { type: "root", children: [] },
+              lineStart: 2,
+              lineEnd: 2
+            }
+          ]
+        })
+      : undefined;
+
+    expect(result?.props).toMatchObject({
+      columnAlign: "center"
+    });
+  });
+
+  it("supports contentSize from frontmatter", () => {
+    const registry = createCoreTemplateRegistry();
+    const template = registry["two-column"];
+
+    const contentMarkdown = "# Compare";
+    const result = template
+      ? decodeSlideTemplate(template, {
+          layout: "two-column",
+          frontmatter: { contentSize: "small" },
+          frontmatterData: {},
+          bodyMarkdown: "",
+          contentMarkdown,
+          ast: parseMarkdownAst(contentMarkdown),
+          containers: [
+            {
+              type: "fenced_container",
+              kind: "leftColumn",
+              markdown: "A",
+              ast: { type: "root", children: [] },
+              lineStart: 1,
+              lineEnd: 1
+            },
+            {
+              type: "fenced_container",
+              kind: "rightColumn",
+              markdown: "B",
+              ast: { type: "root", children: [] },
+              lineStart: 2,
+              lineEnd: 2
+            }
+          ]
+        })
+      : undefined;
+
+    expect(result?.props).toMatchObject({
+      contentSize: "small"
     });
   });
 });

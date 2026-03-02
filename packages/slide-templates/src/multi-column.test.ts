@@ -110,7 +110,71 @@ describe("multi-column decoder", () => {
         "Column C content",
         "Column D content"
       ],
+      columnAlign: "top",
+      contentSize: "medium",
       className: "theme-default"
+    });
+  });
+
+  it("supports columnAlign from frontmatter", () => {
+    const registry = createCoreTemplateRegistry();
+    const template = registry["multi-column"];
+
+    const contentMarkdown = "# Compare";
+    const result = template
+      ? decodeSlideTemplate(template, {
+          layout: "multi-column",
+          frontmatter: { columnAlign: "bottom" },
+          frontmatterData: {},
+          bodyMarkdown: "",
+          contentMarkdown,
+          ast: parseMarkdownAst(contentMarkdown),
+          containers: [
+            {
+              type: "fenced_container",
+              kind: "column",
+              markdown: "A",
+              ast: { type: "root", children: [] },
+              lineStart: 1,
+              lineEnd: 1
+            }
+          ]
+        })
+      : undefined;
+
+    expect(result?.props).toMatchObject({
+      columnAlign: "bottom"
+    });
+  });
+
+  it("supports contentSize from frontmatter", () => {
+    const registry = createCoreTemplateRegistry();
+    const template = registry["multi-column"];
+
+    const contentMarkdown = "# Compare";
+    const result = template
+      ? decodeSlideTemplate(template, {
+          layout: "multi-column",
+          frontmatter: { contentSize: "large" },
+          frontmatterData: {},
+          bodyMarkdown: "",
+          contentMarkdown,
+          ast: parseMarkdownAst(contentMarkdown),
+          containers: [
+            {
+              type: "fenced_container",
+              kind: "column",
+              markdown: "A",
+              ast: { type: "root", children: [] },
+              lineStart: 1,
+              lineEnd: 1
+            }
+          ]
+        })
+      : undefined;
+
+    expect(result?.props).toMatchObject({
+      contentSize: "large"
     });
   });
 });

@@ -1,24 +1,22 @@
 import { BasicMarkdown } from "../../markdown/basic-markdown";
 import type { TwoColumnTemplateProps } from "../shared";
+import { toColumnAlignItemsClass, toContentSizeClass } from "../shared";
 import type { SlideTemplateSlots } from "../../ui-types";
 
 export function TwoColumnTemplate(
-  { title, lead, leftColumn, rightColumn, className }: TwoColumnTemplateProps,
+  {
+    title,
+    lead,
+    leftColumn,
+    rightColumn,
+    columnAlign = "top",
+    contentSize = "medium",
+    className,
+  }: TwoColumnTemplateProps,
   slots: SlideTemplateSlots = {},
 ) {
-  const content = (
-    <div className="grid grid-cols-9 grid-rows-5 gap-gutter">
-      <div className="grid h-full min-h-0 grid-cols-2 gap-6">
-        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
-          <BasicMarkdown markdown={leftColumn} />
-        </div>
-        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
-          <BasicMarkdown markdown={rightColumn} />
-        </div>
-      </div>
-    </div>
-  );
-
+  const columnAlignClass = toColumnAlignItemsClass(columnAlign);
+  const contentSizeClass = toContentSizeClass(contentSize);
   return (
     <div
       className={[`page tint-bgc-full tint-c-text`, className]
@@ -48,7 +46,7 @@ export function TwoColumnTemplate(
           </div>
         )}
         <div>
-          <div className="flex gap-gutter items-end">
+          <div className={["flex gap-gutter", columnAlignClass, contentSizeClass].join(" ")}>
             {[leftColumn, rightColumn].map((column, index) => (
               <div
                 key={index}

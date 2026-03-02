@@ -1,7 +1,11 @@
 import { asNonEmptyString, toThemeClassName } from "../../decode-engine";
 import { parseMarkdownAst } from "../../markdown-ast";
 import type { SlideContainerRule, SlideTemplateDefinition } from "../../types";
-import type { MultiColumnTemplateProps } from "../shared";
+import {
+  toColumnAlign,
+  toContentSize,
+  type MultiColumnTemplateProps
+} from "../shared";
 
 export const multiColumnContainerRules: readonly SlideContainerRule[] = [
   {
@@ -138,6 +142,16 @@ export const multiColumnTemplateDefinition: SlideTemplateDefinition<MultiColumnT
             ],
             transform: (value) => toColumnArray(value),
             default: []
+          },
+          columnAlign: {
+            sources: [{ kind: "frontmatter", key: "columnAlign", nonEmpty: true }],
+            transform: (value) => toColumnAlign(value),
+            default: "top"
+          },
+          contentSize: {
+            sources: [{ kind: "frontmatter", key: "contentSize", nonEmpty: true }],
+            transform: (value) => toContentSize(value),
+            default: "medium"
           },
           className: {
             sources: [{ kind: "frontmatter", key: "theme", nonEmpty: true }],

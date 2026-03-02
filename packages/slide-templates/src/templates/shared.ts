@@ -4,11 +4,16 @@ export interface MarkdownTemplateProps {
   markdown: string;
 }
 
+export type ColumnAlign = "top" | "center" | "bottom";
+export type ContentSize = "small" | "medium" | "large";
+
 export interface TwoColumnTemplateProps {
   title: string;
   lead?: string;
   leftColumn: string;
   rightColumn: string;
+  columnAlign: ColumnAlign;
+  contentSize: ContentSize;
   className?: string;
 }
 
@@ -16,7 +21,69 @@ export interface MultiColumnTemplateProps {
   title: string;
   lead?: string;
   columns: string[];
+  columnAlign: ColumnAlign;
+  contentSize: ContentSize;
   className?: string;
+}
+
+export function toColumnAlign(value: unknown): ColumnAlign {
+  if (typeof value !== "string") {
+    return "top";
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized === "center") {
+    return "center";
+  }
+
+  if (normalized === "bottom") {
+    return "bottom";
+  }
+
+  return "top";
+}
+
+export function toColumnAlignItemsClass(value: ColumnAlign | undefined): string {
+  if (value === "center") {
+    return "items-center";
+  }
+
+  if (value === "bottom") {
+    return "items-end";
+  }
+
+  return "items-start";
+}
+
+export function toContentSize(value: unknown): ContentSize {
+  if (typeof value !== "string") {
+    return "medium";
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized === "small") {
+    return "small";
+  }
+
+  if (normalized === "large") {
+    return "large";
+  }
+
+  return "medium";
+}
+
+export function toContentSizeClass(value: ContentSize | undefined): string {
+  if (value === "small") {
+    return "size-small";
+  }
+
+  if (value === "large") {
+    return "size-large";
+  }
+
+  return "size-medium";
 }
 
 export const baseTemplateRootClassName =
