@@ -1,36 +1,154 @@
 import ReactMarkdown from "react-markdown";
+import { InfoBox } from "./info-box";
+import { DividerList } from "./divider-list";
+import Paragraph from "./components/paragraph";
+import List from "./components/list";
+import ListItem from "./components/list-item";
+import Headline from "./components/headline";
 
 interface BasicMarkdownProps {
   markdown: string;
 }
 
+type MarkdownBlockKind = "infoBox" | "divivderList";
+
+interface MarkdownSegment {
+  kind: "markdown" | MarkdownBlockKind;
+  markdown: string;
+}
+
+const fencedSegmentKindByContainerKind: Record<string, MarkdownBlockKind> = {
+  infoBox: "infoBox",
+  dividerList: "divivderList",
+  divivderList: "divivderList",
+};
+
+function trimOuterBlankLines(lines: string[]): string[] {
+  let start = 0;
+  let end = lines.length;
+
+  while (start < end && lines[start].trim().length === 0) {
+    start += 1;
+  }
+
+  while (end > start && lines[end - 1].trim().length === 0) {
+    end -= 1;
+  }
+
+  return lines.slice(start, end);
+}
+
+function pushMarkdownSegment(segments: MarkdownSegment[], lines: string[]) {
+  const normalized = trimOuterBlankLines(lines);
+  const value = normalized.join("\n");
+
+  if (value.trim().length === 0) {
+    return;
+  }
+
+  segments.push({
+    kind: "markdown",
+    markdown: value,
+  });
+}
+
+export function parseBasicMarkdownSegments(
+  markdown: string,
+): MarkdownSegment[] {
+  const segments: MarkdownSegment[] = [];
+  const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
+  const markdownLines: string[] = [];
+  let activeContainer: {
+    kind: MarkdownBlockKind;
+    openLine: string;
+    lines: string[];
+  } | null = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (activeContainer) {
+      if (trimmed === ":::") {
+        const containerMarkdown = trimOuterBlankLines(
+          activeContainer.lines,
+        ).join("\n");
+        segments.push({
+          kind: activeContainer.kind,
+          markdown:
+            containerMarkdown.trim().length === 0 ? "" : containerMarkdown,
+        });
+        activeContainer = null;
+        continue;
+      }
+
+      activeContainer.lines.push(line);
+      continue;
+    }
+
+    const openMatch = trimmed.match(/^:::\s*([a-zA-Z0-9_-]+)\s*$/);
+    const segmentKind = openMatch
+      ? fencedSegmentKindByContainerKind[openMatch[1]]
+      : undefined;
+
+    if (segmentKind) {
+      pushMarkdownSegment(segments, markdownLines);
+      markdownLines.length = 0;
+      activeContainer = { kind: segmentKind, openLine: line, lines: [] };
+      continue;
+    }
+
+    markdownLines.push(line);
+  }
+
+  if (activeContainer) {
+    markdownLines.push(activeContainer.openLine, ...activeContainer.lines);
+  }
+
+  pushMarkdownSegment(segments, markdownLines);
+
+  return segments;
+}
+
 export function BasicMarkdown({ markdown }: BasicMarkdownProps) {
+  const segments = parseBasicMarkdownSegments(markdown);
+
+  if (segments.length === 0) {
+    return null;
+  }
+
   return (
-    <ReactMarkdown
-      components={{
-        p: ({ className, ...props }) => (
-          <p
-            className={["typo-body size-medium tint-c-text", className]
-              .filter(Boolean)
-              .join(" ")}
-            {...props}
-          />
-        ),
-        ul: ({ className, ...props }) => (
-          <ul
-            className={[
-              "typo-body size-medium tint-c-text list-inside list-disc",
-              className,
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            {...props}
-          />
-        ),
-      }}
-      skipHtml
-    >
-      {markdown}
-    </ReactMarkdown>
+    <>
+      {segments.map((segment, index) => {
+        if (segment.kind === "infoBox") {
+          return (
+            <InfoBox key={`info-box-${index}`} markdown={segment.markdown} />
+          );
+        }
+
+        if (segment.kind === "divivderList") {
+          return (
+            <DividerList
+              key={`divider-list-${index}`}
+              markdown={segment.markdown}
+            />
+          );
+        }
+
+        return (
+          <ReactMarkdown
+            components={{
+              h2: Headline,
+              p: Paragraph,
+              ul: List,
+              li: ListItem,
+            }}
+            key={`markdown-${index}`}
+            skipHtml
+          >
+            {segment.markdown}
+          </ReactMarkdown>
+        );
+      })}
+    </>
   );
 }

@@ -38,7 +38,7 @@ export function TwoColumnTemplate(
             {!!lead && (
               <p
                 className={
-                  "typo-body size-large whitespace-pre-wrap tint-c-subtle w-5/9" +
+                  "typo-body size-large whitespace-pre-wrap tint-c-subtle w-4/9" +
                   (!!title ? " mt-gutter" : "")
                 }
               >
@@ -48,14 +48,11 @@ export function TwoColumnTemplate(
           </div>
         )}
         <div>
-          <div className="flex gap-gutter">
+          <div className="flex gap-gutter items-end">
             {[leftColumn, rightColumn].map((column, index) => (
               <div
                 key={index}
-                className={
-                  "basis-1/3 grow space-y-[var(--spacing-gutter)]" +
-                  (index === 0 ? " pr-1/8" : "")
-                }
+                className={"basis-1/3 grow space-y-[var(--spacing-gutter)]"}
               >
                 <BasicMarkdown markdown={column} />
               </div>

@@ -417,6 +417,37 @@ function composeSlideMarkdown(
     ].join("\n");
   }
 
+  if (layout === "multi-column") {
+    return [
+      "---",
+      "layout: multi-column",
+      "---",
+      `# ${item.title}`,
+      "",
+      intro,
+      "",
+      "::: column",
+      "## Dimension 1",
+      `- Clarify the first lens for ${context.audience}.`,
+      ":::",
+      "",
+      "::: column",
+      "## Dimension 2",
+      "- Add a distinct perspective with one key proof point.",
+      ":::",
+      "",
+      "::: column",
+      "## Dimension 3",
+      "- Highlight tradeoffs or constraints succinctly.",
+      ":::",
+      "",
+      "::: column",
+      "## Dimension 4",
+      "- Close with a practical implication or next action.",
+      ":::"
+    ].join("\n");
+  }
+
   if (layout === "metric-highlight") {
     return [
       "---",

@@ -7,6 +7,7 @@ interface ActiveContainer {
   kind: string;
   lines: string[];
   lineStart: number;
+  nestedDepth: number;
 }
 
 export interface ParseFencedContainersResult {
@@ -31,19 +32,16 @@ export function parseFencedContainers(markdown: string): ParseFencedContainersRe
 
     if (openMatch) {
       if (activeContainer) {
-        diagnostics.push({
-          severity: "warning",
-          message: "Nested fenced containers are not supported in v1.",
-          code: "nested_fenced_container"
-        });
         activeContainer.lines.push(line);
+        activeContainer.nestedDepth += 1;
         continue;
       }
 
       activeContainer = {
         kind: openMatch[1],
         lines: [],
-        lineStart: index + 1
+        lineStart: index + 1,
+        nestedDepth: 0
       };
       continue;
     }
@@ -55,6 +53,12 @@ export function parseFencedContainers(markdown: string): ParseFencedContainersRe
           message: "Found closing fenced container without opening tag.",
           code: "orphan_container_close"
         });
+        continue;
+      }
+
+      if (activeContainer.nestedDepth > 0) {
+        activeContainer.nestedDepth -= 1;
+        activeContainer.lines.push(line);
         continue;
       }
 

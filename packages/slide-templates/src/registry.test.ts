@@ -11,6 +11,7 @@ describe("template registry", () => {
       "section-divider",
       "bullet-list",
       "two-column",
+      "multi-column",
       "quote-focus",
       "image-left-copy",
       "image-right-copy",

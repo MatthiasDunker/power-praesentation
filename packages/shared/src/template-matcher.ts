@@ -5,6 +5,7 @@ const templateCatalog: Record<CoreTemplateId, { intents: string[]; weight: numbe
   "section-divider": { intents: ["section", "transition", "chapter"], weight: 3 },
   "bullet-list": { intents: ["list", "steps", "agenda", "overview"], weight: 2 },
   "two-column": { intents: ["compare", "versus", "tradeoff", "split"], weight: 3 },
+  "multi-column": { intents: ["matrix", "framework", "dimensions", "quadrant"], weight: 2 },
   "quote-focus": { intents: ["quote", "testimonial", "voice"], weight: 2 },
   "image-left-copy": { intents: ["visual", "image", "photo", "example"], weight: 2 },
   "image-right-copy": { intents: ["visual", "image", "photo", "example"], weight: 2 },
@@ -36,6 +37,10 @@ function scoreTemplate(item: OutlineItem, templateId: CoreTemplateId): number {
   }
 
   if (templateId === "two-column" && /versus|vs\.|compare|tradeoff/.test(lowered)) {
+    base += 2;
+  }
+
+  if (templateId === "multi-column" && /matrix|quadrant|2x2|framework/.test(lowered)) {
     base += 2;
   }
 

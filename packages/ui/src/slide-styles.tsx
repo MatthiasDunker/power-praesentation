@@ -24,10 +24,14 @@ function resolveGenerateSlideCssOptions(
     };
   }
 
+  const explicitScopeSelector = cacheKeyOrOptions?.scopeSelector;
+
   return {
     cacheKey: cacheKeyOrOptions?.cacheKey ?? "",
     scopeSelector:
-      cacheKeyOrOptions?.scopeSelector ?? defaultSlideScopeSelector,
+      explicitScopeSelector === undefined
+        ? defaultSlideScopeSelector
+        : explicitScopeSelector,
   };
 }
 
@@ -37,6 +41,17 @@ function getCacheLookupKey(
 ): string {
   const normalizedScopeSelector = scopeSelector?.trim() || "none";
   return `${cacheKey}::${normalizedScopeSelector}`;
+}
+
+function hashContent(content: string): string {
+  // FNV-1a 32-bit hash for fast, deterministic cache bucketing.
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < content.length; index += 1) {
+    hash ^= content.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+
+  return (hash >>> 0).toString(36);
 }
 
 function scopeCssText(cssText: string, scopeSelector: string | null): string {
@@ -106,16 +121,17 @@ export async function generateSlideCssFromHtml(
 ): Promise<string> {
   const { cacheKey, scopeSelector } =
     resolveGenerateSlideCssOptions(cacheKeyOrOptions);
+
+  if (html.trim().length === 0) {
+    return "";
+  }
+
   const scopedCacheKey = cacheKey
-    ? getCacheLookupKey(cacheKey, scopeSelector)
+    ? getCacheLookupKey(`${cacheKey}:${hashContent(html)}`, scopeSelector)
     : null;
 
   if (scopedCacheKey && cssCacheByTemplateKey.has(scopedCacheKey)) {
     return cssCacheByTemplateKey.get(scopedCacheKey) ?? "";
-  }
-
-  if (html.trim().length === 0) {
-    return "";
   }
 
   const generator = await getUnoGenerator();
