@@ -333,20 +333,16 @@ export function SlideWorkspaceShell() {
         return;
       }
 
-      const remappedSlides = parsedSlides.map((slide, index) => ({
-        ...slide,
-        id: activeDeck.slides[index]?.id ?? slide.id
-      }));
       const nextDeck: DeckDocument = {
         ...activeDeck,
-        slides: remappedSlides,
+        slides: parsedSlides,
         fullMarkdown: parsed.normalizedMarkdown
       };
 
       setDeck(nextDeck);
 
       const currentSelectedSlideId = selectedSlideIdRef.current;
-      if (remappedSlides.length === 0) {
+      if (parsedSlides.length === 0) {
         if (currentSelectedSlideId !== null) {
           setSelectedSlideId(null);
         }
@@ -355,7 +351,7 @@ export function SlideWorkspaceShell() {
 
       if (
         currentSelectedSlideId &&
-        remappedSlides.some((slide) => slide.id === currentSelectedSlideId)
+        parsedSlides.some((slide) => slide.id === currentSelectedSlideId)
       ) {
         return;
       }
@@ -365,9 +361,9 @@ export function SlideWorkspaceShell() {
       );
       const fallbackIndex =
         previousSelectionIndex >= 0
-          ? Math.min(previousSelectionIndex, remappedSlides.length - 1)
+          ? Math.min(previousSelectionIndex, parsedSlides.length - 1)
           : 0;
-      setSelectedSlideId(remappedSlides[fallbackIndex]?.id ?? remappedSlides[0]?.id ?? null);
+      setSelectedSlideId(parsedSlides[fallbackIndex]?.id ?? parsedSlides[0]?.id ?? null);
     }, markdownParseDebounceMs);
 
     return () => {
@@ -494,6 +490,11 @@ export function SlideWorkspaceShell() {
       return;
     }
 
+    if (navSelectionTimeoutRef.current !== null) {
+      window.clearTimeout(navSelectionTimeoutRef.current);
+      navSelectionTimeoutRef.current = null;
+    }
+
     const markdownSegments = splitDeckMarkdownForEditing(markdownText);
     const sourceSegments =
       markdownSegments.length === activeDeck.slides.length
@@ -505,17 +506,10 @@ export function SlideWorkspaceShell() {
 
     const parsed = parseDeckMarkdown(nextMarkdown);
     const parsedSlides = toSlideDocuments(parsed);
-    const remainingSlides = activeDeck.slides.filter(
-      (slide) => slide.id !== slideId,
-    );
-    const remappedSlides = parsedSlides.map((slide, index) => ({
-      ...slide,
-      id: remainingSlides[index]?.id ?? slide.id,
-    }));
 
     const nextDeck: DeckDocument = {
       ...activeDeck,
-      slides: remappedSlides,
+      slides: parsedSlides,
       fullMarkdown: parsed.normalizedMarkdown,
     };
 
@@ -523,24 +517,32 @@ export function SlideWorkspaceShell() {
     setMarkdownText(nextDeck.fullMarkdown);
 
     const currentSelectedSlideId = selectedSlideIdRef.current;
-    if (
-      currentSelectedSlideId &&
-      currentSelectedSlideId !== slideId &&
-      remappedSlides.some((slide) => slide.id === currentSelectedSlideId)
-    ) {
-      return;
-    }
-
-    if (remappedSlides.length === 0) {
+    if (parsedSlides.length === 0) {
       setSelectedSlideId(null);
       return;
     }
 
-    const nextSelectedIndex = Math.min(
-      deletedSlideIndex,
-      remappedSlides.length - 1,
+    const previousSelectionIndex = activeDeck.slides.findIndex(
+      (slide) => slide.id === currentSelectedSlideId,
     );
-    const nextSelectedSlideId = remappedSlides[nextSelectedIndex]?.id ?? null;
+    let nextSelectedIndex =
+      previousSelectionIndex >= 0
+        ? previousSelectionIndex
+        : Math.min(deletedSlideIndex, parsedSlides.length - 1);
+
+    if (
+      previousSelectionIndex >= 0 &&
+      deletedSlideIndex < previousSelectionIndex
+    ) {
+      nextSelectedIndex -= 1;
+    }
+
+    nextSelectedIndex = Math.min(
+      Math.max(0, nextSelectedIndex),
+      parsedSlides.length - 1,
+    );
+
+    const nextSelectedSlideId = parsedSlides[nextSelectedIndex]?.id ?? null;
     setSelectedSlideId(nextSelectedSlideId);
 
     if (nextSelectedSlideId) {

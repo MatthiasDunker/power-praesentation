@@ -194,6 +194,71 @@ test("deletes a slide from the thumbnail context menu", async ({ page }) => {
   await expect(page.getByTestId("live-slide-page").locator("h1")).toContainText("Slide 2");
 });
 
+test("keeps canvas and markdown selection in sync after deleting a slide", async ({
+  page,
+}) => {
+  await page.route("**/api/decks/generate", async (route) => {
+    const slides = Array.from({ length: 6 }, (_, index) => titleHeroSlide(index + 1));
+    const deck = {
+      deckId: "deck-delete-sync-e2e",
+      slides,
+      fullMarkdown: slides.map((slide) => slide.rawMarkdown).join("\n\n---\n\n"),
+      inferredContext: {
+        audience: "exec",
+        tone: "clear",
+        language: "en",
+        speechLevel: "clear",
+        objective: "inform"
+      },
+      ruleset: {
+        listSentenceSchema: "start with verb",
+        titleStyle: "short",
+        maxBulletsPerSlide: 5,
+        constraints: []
+      },
+      outline: slides.map((slide, index) => ({
+        id: String(index + 1),
+        title: `Slide ${index + 1}`,
+        summary: `Body ${index + 1}`,
+        intent: "content"
+      }))
+    };
+
+    const body = [
+      sseEvent({ type: "task_started", taskId: "ingest_input", message: "Collecting" }),
+      sseEvent({ type: "task_completed", taskId: "ingest_input", message: "Done" }),
+      sseEvent({ type: "task_started", taskId: "compose_slides", message: "Composing" }),
+      sseEvent({ type: "task_completed", taskId: "compose_slides", message: "Done" }),
+      sseEvent({ type: "deck_completed", deck })
+    ].join("");
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        "content-type": "text/event-stream"
+      },
+      body
+    });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Prompt").fill("Create a 6 slide deck");
+  await page.getByRole("button", { name: "Generate deck" }).click();
+
+  await expect(page.getByText("Generated 6 slides", { exact: false })).toBeVisible();
+  const navButtons = page.getByTestId("slide-nav").getByRole("button");
+  await expect(navButtons).toHaveCount(6);
+
+  await navButtons.nth(0).click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+
+  await expect(navButtons).toHaveCount(5);
+
+  await navButtons.nth(4).click();
+  await expect(page.getByLabel("Deck markdown for slide 5")).toHaveAttribute("data-active", "true");
+  await expect(page.getByTestId("live-slide-page").locator("h1")).toContainText("Slide 6");
+});
+
 test("clicking slide nav scrolls markdown editor to selected slide", async ({ page }) => {
   await page.route("**/api/decks/generate", async (route) => {
     const slides = Array.from({ length: 6 }, (_, index) => titleHeroSlide(index + 1));
